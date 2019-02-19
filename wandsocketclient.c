@@ -51,10 +51,19 @@ int main(int argc, char const *argv[])
 	printf("%s\n", hello); 
 	valread = read( sock , buffer, 1024); 
 	printf("%s\n",buffer ); 
+	buffer[1] = 0;
 
 	while( 1 )
 	{
 		valread = read( sock , buffer, 1024); 
+		if( valread < 0 )
+		{
+			continue;
+		}
+		else if( valread == 0 )
+		{
+			break;
+		}
 
 		send(sock, buffer, strlen( buffer ), 0);
 		printf("\tCommand: '%c'\n", buffer[0] );
@@ -79,6 +88,10 @@ int main(int argc, char const *argv[])
 
 		case 'D':
 			printf("Wand is (D)one capturing a post (The lights will return to Preview mode and the active spot should be advanced)\n\n");
+			break;
+
+		case 'A':
+			printf("Wand Capture has been (A)borted (The Wand was returned to the Easel Cradle)\n\n");
 			break;
 	
 		case 'N':
