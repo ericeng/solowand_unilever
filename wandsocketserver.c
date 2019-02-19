@@ -54,7 +54,76 @@ int main(int argc, char const *argv[])
 	valread = read( new_socket , buffer, 1024); 
 	printf("%s\n",buffer ); 
 	send(new_socket , hello , strlen(hello) , 0 ); 
-	printf("Hello message sent\n"); 
+	printf("Wand is online.\n"); 
+
+	while( 1 )
+	{
+		char c;
+
+		c = getchar();
+
+		buffer[0] = c;
+	        buffer[1] = 0;
+		if( c == 'q' )
+		{
+			break;
+		}
+
+		switch( c )
+		{
+		case 'E':
+		case 'W':
+		case 'P':
+		case 'C':
+		case 'D':
+		case 'N':
+		case 'B':
+
+			send(new_socket, buffer, strlen( buffer ), 0);
+			printf("\tCommand: '%c'\n", c );
+			valread = read( new_socket , buffer, 1024); 
+			printf("Response: %s\n",buffer ); 
+
+			switch( (char)buffer[0] )
+			{
+			case 'E':
+				printf("Wand is in the (E)asel Cradle\n\n");
+				break;
+	
+			case 'W':
+				printf("Wand is oriented the (W)rong way in the Easel Cradle\n\n");
+				break;
+
+			case 'P':
+				printf("Wand is in (P)review mode (Removed from the Easel Cradle)\n\n");
+				break;
+	
+			case 'C':
+				printf("Wand is in (C)apture mode (The lights will begin to cycle)\n\n");
+				break;
+
+			case 'D':
+				printf("Wand is (D)one capturing a post (The lights will return to Preview mode and the active spot should be advanced)\n\n");
+				break;
+	
+			case 'N':
+				printf("Wand is showing a (N)otification indicator (The Blue button light is on)\n\n");
+				break;
+
+			case 'B':
+				printf("(B)lue lit button in notification mode has been pressed\n\n");
+				break;
+
+			default:
+				printf("\nResponse not understood.\n\n");
+			}
+
+			break;
+		default:
+			;
+		}
+
+	}
 	return 0; 
 } 
 
