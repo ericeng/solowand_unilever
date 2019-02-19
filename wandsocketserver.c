@@ -13,7 +13,7 @@ int main(int argc, char const *argv[])
 	int opt = 1; 
 	int addrlen = sizeof(address); 
 	char buffer[1024] = {0}; 
-	char *hello = "Hello from server"; 
+	char* hello = "Wand is online.\n"; 
 	
 	// Creating socket file descriptor 
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) 
@@ -58,11 +58,11 @@ int main(int argc, char const *argv[])
 
 	while( 1 )
 	{
-		char c;
+		unsigned int c;
 
 		c = getchar();
 
-		buffer[0] = c;
+		buffer[0] = (char) c;
 	        buffer[1] = 0;
 		if( c == 'q' )
 		{
@@ -77,6 +77,7 @@ int main(int argc, char const *argv[])
 		case 'C':
 		case 'D':
 		case 'N':
+		case 'A':
 		case 'B':
 
 			send(new_socket, buffer, strlen( buffer ), 0);
@@ -106,6 +107,10 @@ int main(int argc, char const *argv[])
 				printf("Wand is (D)one capturing a post (The lights will return to Preview mode and the active spot should be advanced)\n\n");
 				break;
 	
+			case 'A':
+				printf("Wand Capture has been (A)borted (The Wand was returned to the Easel Cradle)\n\n");
+				break;
+
 			case 'N':
 				printf("Wand is showing a (N)otification indicator (The Blue button light is on)\n\n");
 				break;
@@ -116,13 +121,18 @@ int main(int argc, char const *argv[])
 
 			default:
 				printf("\nResponse not understood.\n\n");
+				break;
 			}
 
 			break;
-		default:
-			;
-		}
 
+		case 10:
+			break;
+
+		default:
+			printf("\nCommand not understood.\n\n");
+			break;
+		}
 	}
 	return 0; 
 } 
