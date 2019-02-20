@@ -31,18 +31,12 @@ static wand_socket* _wand_constructor( void )
 {
     wand_socket* ws;
 
-printf("ws 0 %d\n", sizeof( wand_socket ));
     ws = (wand_socket*)calloc( sizeof( wand_socket ), 1 );
 
-printf("ws 1\n");
     ws->opt = 1;
-printf("ws 2\n");
     ws->addrlen = sizeof( ws->address );
-printf("ws 3\n");
     memset( ws->buffer, 0, sizeof( ws->buffer ));
-printf("ws 4\n");
     ws->hello = "Wand is online.\n";
-printf("ws 5\n");
 
     return ws;
 }
