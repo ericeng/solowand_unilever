@@ -51,61 +51,38 @@ int hoolahoop(void);
 
 int main(int argc, char const *argv[]) 
 { 
-	printf( "fuck me\n" );
-	wand_socket* ws = _wand_constructor();
-        printf( "harder\n" );
-	hoolahoop();
-}
+    wand_socket* ws = _wand_constructor();
 
-int hoolahoop( void )
-{
-    wand_socket* ws;
-printf("1\n");
-fflush(stdout);
-    ws = _wand_constructor();
-
-printf("1.1\n");
-fflush(stdout);
     // Creating socket file descriptor 
     if(( ws->server_fd = socket( AF_INET, SOCK_STREAM, 0 )) == 0 ) 
     { 
 	_socket_exit( "socket failed" ); 
     } 
 	
-printf("2\n");
-fflush(stdout);
     // Forcefully attaching socket to PORT 
     if( setsockopt( ws->server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &(ws->opt), sizeof( ws->opt ))) 
     { 
 	_socket_exit( "socket setsockopt failed\n" ); 
     } 
 
-printf("3\n");
-fflush(stdout);
     ws->address.sin_family = AF_INET; 
     ws->address.sin_addr.s_addr = INADDR_ANY; 
     ws->address.sin_port = htons( PORT ); 
 	
-printf("4\n");
-fflush(stdout);
     // Forcefully attaching socket to the PORT
     if( bind( ws->server_fd, (struct sockaddr *)&(ws->address), sizeof(ws->address)) < 0 ) 
     { 
 	_socket_exit( "socket bind failed\n" ); 
     } 
-printf("5\n");
-fflush(stdout);
     if( listen( ws->server_fd, 3 ) < 0 ) 
     { 
 	_socket_exit( "socket listen failed\n" ); 
     } 
-printf("6/n");
     if (( ws->new_socket = accept( ws->server_fd, (struct sockaddr*)&(ws->address), (socklen_t*)&(ws->addrlen) )) < 0 ) 
     { 
 	_socket_exit( "accept failed\n" ); 
     } 
 
-printf("7/n");
     ws->valread = read( ws->new_socket , ws->buffer, sizeof( ws->buffer )); 
     printf( "%s\n", ws->buffer ); 
 
