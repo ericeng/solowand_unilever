@@ -617,6 +617,17 @@ int main( int argc, char** argv )
 	    }
 	}
     }
+    else
+    {
+	printf( "\nSolomomo Skin Wand test application\n\n" );
+	printf( "\ta is the demo\n\n" );
+	printf( "\t1 is for haptic test\n" );
+	printf( "\tb is for button led test\n" );
+	printf( "\th is for notification demo\n" );
+	printf( "\tL is ring led and video test section\n" );
+	printf( "\tp is to test preview section\n" );
+	printf( "\n\n" );
+    }
 
     _off();
 
