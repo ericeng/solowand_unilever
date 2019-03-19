@@ -1,14 +1,15 @@
 # what to paste into the front of the /etc/dhcpcd.conf file to make the static ip work 
 # the address xx and yy should count up and for known things be filled in as follows:
 # the wand is 60 and 61, the clippers are 62 and 63, the trimmers are 64 and 65, the tweezers are 66 and 67, the remote viewer demo is 68 and 69 
+# remove the # on the 8 active lines below when the device needs to run stand alone on the hub
 
-interface eth0
-static ip_address=10.1.1.xx/24
-static routers=10.1.1.1
-static domain_name_servers=10.1.1.1
+#interface eth0
+#static ip_address=10.1.1.xx/24
+#static routers=10.1.1.1
+#static domain_name_servers=10.1.1.1
 
-interface wlan0
-static ip_address=10.1.1.yy/24
-static routers=10.1.1.1
-static domain_name_servers=10.1.1.1
+#interface wlan0
+#static ip_address=10.1.1.yy/24
+#static routers=10.1.1.1
+#static domain_name_servers=10.1.1.1
 
