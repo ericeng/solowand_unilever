@@ -298,8 +298,9 @@ static void _preview( void )
     while( !_wand_in_cradle() )
     {
         _ring_led( 1, 10, 0 ); 
-        if( _button() )
+        if( _button())
 	{
+            _button_led( 0 );
 	    _ring_capture();
 	}
     }
@@ -309,9 +310,6 @@ static void _preview( void )
 
 static int _ring_capture( void )
 {
-    int i; 
-    int mem;
-
     _ring_beg();
 
     if( _ring_led( 5, 20000000, 1 )	// R1
@@ -329,6 +327,8 @@ static int _ring_capture( void )
     }
 
     _ring_reset();
+
+    return 1;
 }
 
 static inline char _get_level( char gpio )
@@ -415,6 +415,7 @@ static void _frame_notify( void )
 {
 }
 
+/*
 static void _frame_preview( void )
 {
 }
@@ -422,6 +423,7 @@ static void _frame_preview( void )
 static void _frame_capture( void )
 {
 }
+ */
 
 static int _haptic( int status )
 {
@@ -534,7 +536,7 @@ static int _notification_demo( void )
 
 int main( int argc, char** argv )
 {
-    int mem, value, i;
+    int mem;
     void *map_base;
     
     if ((mem = open ("/dev/mem", O_RDWR | O_SYNC)) == -1)
