@@ -1,0 +1,13 @@
+
+[Unit]
+Description=Solomomo Eye Service
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/sudo /usr/bin/python /home/pi/PanTiltFacetracker/facetracker_lbp.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
