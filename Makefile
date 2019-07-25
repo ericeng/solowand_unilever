@@ -12,8 +12,8 @@ all: wand launcheye
 launcheye: launcheye.c 
 	$(CC) $(CFLAGS) -o launcheye launcheye.c
 
-wand: wand.c 
-	$(CC) $(CFLAGS) -o wand wand.c
+wand: solohwapi.c 
+	$(CC) $(CFLAGS) -D__DEMO__ -o wand solohwapi.c
 
 install: wand launcheye
 	cp wand $(PREFIX)/bin
