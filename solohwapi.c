@@ -204,6 +204,7 @@ typedef struct C_IMU
 static struct timespec _now;
 static ulong _now_sec;
 static ulong _now_nsec;
+static uchar _carousel_cursor = 0;
 
 static void _clock_now_get( struct timespec *_scratch )
 {
@@ -213,18 +214,20 @@ static void _clock_now_get( struct timespec *_scratch )
     _now_nsec = _scratch->tv_nsec;
 }
     
-void change_addr_to( uchar new_addr );
-c_haptic* _c_haptic_new( void );
-void _c_haptic_delete( c_haptic* d );
-c_button* c_button_new( void );
-void c_button_delete( c_button* d );
-c_timer* c_timer_new( void );
-void c_timer_delete( c_timer* d );
-c_imu* c_imu_new( void );
-void c_imu_delete( c_imu* d );
-void c_imu_read( c_imu* _this );
-void c_imu_clear( c_imu* _this );
-void c_imu_average( c_imu* _this );
+static void _change_addr_to( uchar new_addr );
+static c_haptic* _c_haptic_new( void );
+static void _c_haptic_delete( c_haptic* d );
+static c_button* _c_button_new( void );
+static void _c_button_delete( c_button* d );
+static c_timer* _c_timer_new( void );
+static void _c_timer_delete( c_timer* d );
+static c_imu* _c_imu_new( void );
+static void _c_imu_delete( c_imu* d );
+#ifdef __TEST__
+static void _c_imu_read( c_imu* _this );
+static void _c_imu_clear( c_imu* _this );
+static void _c_imu_average( c_imu* _this );
+#endif
 static void _preview_done( void );
 static void _preview_on( void );
 static void _preview_off( void );
@@ -255,21 +258,21 @@ int main( int argc, char** argv );
 
 #ifdef __TEST__
 int main( int argc, char** argv );
-int test_swap_bytes( ushort n );
-void test_print_unicode( ushort code );
-void test_pwm_read( int fd, int address );
-void test_read_data( ulong duration_ns, char current_led_address );
+static int test_swap_bytes( ushort n );
+static void test_print_unicode( ushort code );
+static void test_pwm_read( int fd, int address );
+static void test_read_data( ulong duration_ns, char current_led_address );
 #endif
 
-static c_haptic* h = NULL;
-static c_button* b = NULL;
-static c_timer* t = NULL;
-static c_imu* m = NULL;
-static c_hw* p = NULL;
-static c_notification n;
-static void* map_base = NULL;
-static int mem;
-static int fd;
+static c_haptic* _h = NULL;
+static c_button* _b = NULL;
+static c_timer* _t = NULL;
+static c_imu* _m = NULL;
+static c_hw* _p = NULL;
+static c_notification _n;
+static void* _map_base = NULL;
+static int _mem;
+static int _fd;
 static struct timespec _wake_acc;
 static struct timespec _wake_gyr;
 static struct timespec _preview_done_haptic;
@@ -297,13 +300,13 @@ static struct timespec _carousel_frame;
 #define LEDOUT_END_REG LEDOUT_START_REG + (NUMBER_OF_LEDS - 1) / 4 + 1
 
 // Connect to I2C address new_addr
-void change_addr_to( uchar new_addr )
+void _change_addr_to( uchar new_addr )
 {
     static uchar current_addr = 0;
 
     if( current_addr != new_addr )
       {
-      ioctl( fd, I2C_SLAVE, new_addr );
+      ioctl( _fd, I2C_SLAVE, new_addr );
       current_addr = new_addr;
       }
 }
@@ -370,63 +373,64 @@ static inline __s32 i2c_smbus_write_word_data( int file, __u8 command, __u16 val
     return i2c_smbus_access( file, I2C_SMBUS_WRITE, command, I2C_SMBUS_WORD_DATA, &data );
 }
 
-c_haptic* _c_haptic_new( void )
+static c_haptic* _c_haptic_new( void )
 {
     return calloc( sizeof( c_haptic ), 1 );
 }
 
-void _c_haptic_delete( c_haptic* d )
+static void _c_haptic_delete( c_haptic* d )
 {
     free( d );
 }
 
-c_button* c_button_new( void )
+static c_button* _c_button_new( void )
 {
     return calloc( sizeof( c_button ), 1 );
 }
 
-void c_button_delete( c_button* d )
+static void _c_button_delete( c_button* d )
 {
     free( d );
 }
 
-c_timer* c_timer_new( void )
+static c_timer* _c_timer_new( void )
 {
     return calloc( sizeof( c_timer ), 1 );
 }
 
-void c_timer_delete( c_timer* d )
+static void _c_timer_delete( c_timer* d )
 {
     free( d );
 }
 
-c_imu* c_imu_new( void )
+static c_imu* _c_imu_new( void )
 {
     return calloc( sizeof( c_imu ), 1 );
 }
 
-void c_imu_delete( c_imu* d )
+static void _c_imu_delete( c_imu* d )
 {
     free( d );
 }
 
-void c_imu_read( c_imu* _this )
+#ifdef __TEST__
+static void _c_imu_read( c_imu* _this )
 {
-    change_addr_to( SENSOR_ADDRESS );
+    _change_addr_to( SENSOR_ADDRESS );
 
-    _this->gyr_x_lsb = i2c_smbus_read_byte_data( fd, GYR_X_LSB_REG );
-    _this->gyr_x_msb = i2c_smbus_read_byte_data( fd, GYR_X_MSB_REG );
-    _this->gyr_y_lsb = i2c_smbus_read_byte_data( fd, GYR_Y_LSB_REG );
-    _this->gyr_y_msb = i2c_smbus_read_byte_data( fd, GYR_Y_MSB_REG );
-    _this->gyr_z_lsb = i2c_smbus_read_byte_data( fd, GYR_Z_LSB_REG );
-    _this->gyr_z_msb = i2c_smbus_read_byte_data( fd, GYR_Z_MSB_REG );
+    _this->gyr_x_lsb = i2c_smbus_read_byte_data( _fd, GYR_X_LSB_REG );
+    _this->gyr_x_msb = i2c_smbus_read_byte_data( _fd, GYR_X_MSB_REG );
+    _this->gyr_y_lsb = i2c_smbus_read_byte_data( _fd, GYR_Y_LSB_REG );
+    _this->gyr_y_msb = i2c_smbus_read_byte_data( _fd, GYR_Y_MSB_REG );
+    _this->gyr_z_lsb = i2c_smbus_read_byte_data( _fd, GYR_Z_LSB_REG );
+    _this->gyr_z_msb = i2c_smbus_read_byte_data( _fd, GYR_Z_MSB_REG );
 
-    _this->acc_x_lsb = i2c_smbus_read_byte_data( fd, ACC_X_LSB_REG );
-    _this->acc_x_msb = i2c_smbus_read_byte_data( fd, ACC_X_MSB_REG );
-    _this->acc_y_lsb = i2c_smbus_read_byte_data( fd, ACC_Y_LSB_REG );
-    _this->acc_y_msb = i2c_smbus_read_byte_data( fd, ACC_Y_MSB_REG );
-    _this->acc_z_lsb = i2c_smbus_read_byte_data( fd, ACC_Z_LSB_REG );
-    _this->acc_z_msb = i2c_smbus_read_byte_data( fd, ACC_Z_MSB_REG );
+    _this->acc_x_lsb = i2c_smbus_read_byte_data( _fd, ACC_X_LSB_REG );
+    _this->acc_x_msb = i2c_smbus_read_byte_data( _fd, ACC_X_MSB_REG );
+    _this->acc_y_lsb = i2c_smbus_read_byte_data( _fd, ACC_Y_LSB_REG );
+    _this->acc_y_msb = i2c_smbus_read_byte_data( _fd, ACC_Y_MSB_REG );
+    _this->acc_z_lsb = i2c_smbus_read_byte_data( _fd, ACC_Z_LSB_REG );
+    _this->acc_z_msb = i2c_smbus_read_byte_data( _fd, ACC_Z_MSB_REG );
 
     _this->gyr_x += (short)(( _this->gyr_x_msb << 8 ) | _this->gyr_x_lsb );
     _this->gyr_y += (short)(( _this->gyr_y_msb << 8 ) | _this->gyr_y_lsb );
@@ -437,7 +441,7 @@ void c_imu_read( c_imu* _this )
     _this->acc_z += (short)(( _this->acc_z_msb << 8 ) | _this->acc_z_lsb );
 }
 
-void c_imu_clear( c_imu* _this )
+static void _c_imu_clear( c_imu* _this )
 {
     _this->gyr_x = 0;
     _this->gyr_y = 0;
@@ -448,15 +452,17 @@ void c_imu_clear( c_imu* _this )
     _this->acc_z = 0;
 }
 
-void c_imu_average( c_imu* _this )
+static void _c_imu_average( c_imu* _this )
 {
-   _this->gyr_x /= FREQ;  // Averaging
-   _this->gyr_y /= FREQ;
-   _this->gyr_z /= FREQ;
-   _this->acc_x /= FREQ;
-   _this->acc_y /= FREQ;
-   _this->acc_z /= FREQ;
+    _this->gyr_x /= FREQ;  // Averaging
+    _this->gyr_y /= FREQ;
+    _this->gyr_z /= FREQ;
+
+    _this->acc_x /= FREQ;
+    _this->acc_y /= FREQ;
+    _this->acc_z /= FREQ;
 }
+#endif
 
 static c_hw* _c_hw_new( void )
 {
@@ -470,37 +476,37 @@ static void _c_hw_delete( c_hw* _this )
 
 uchar WandHwOpen( void )
 {
-    if(( mem = open( "/dev/mem", O_RDWR | O_SYNC )) == -1 )
+    if(( _mem = open( "/dev/mem", O_RDWR | O_SYNC )) == -1 )
       {
       fprintf( stderr, "Cannot open /dev/mem\n");
       exit(1);
       }
         
-    if(( map_base = (long*) mmap( 0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, mem, ( GPIO_BASE & ~MAP_MASK ))) == NULL )
+    if(( _map_base = (long*) mmap( 0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, _mem, ( GPIO_BASE & ~MAP_MASK ))) == NULL )
       {
       fprintf( stderr, "Cannot open Memory Map\n" );
       exit(1);
       }
 
-    fd = open( BUS, O_RDWR );
-    ioctl( fd, I2C_SLAVE, ADC_ADDRESS );
+    _fd = open( BUS, O_RDWR );
+    ioctl( _fd, I2C_SLAVE, ADC_ADDRESS );
     
-    p = _c_hw_new();
-    h = _c_haptic_new();
-    b = c_button_new();
-    t = c_timer_new();
-    m = c_imu_new();
+    _p = _c_hw_new();
+    _h = _c_haptic_new();
+    _b = _c_button_new();
+    _t = _c_timer_new();
+    _m = _c_imu_new();
 
     // Addresses of GPIO registers
-    p->addr_level = (void*)( map_base + ( GPIO_BASE & MAP_MASK ) + LEVEL_OFFSET );
-    p->addr_set = (void *)( map_base + ( GPIO_BASE & MAP_MASK ) + SET_OFFSET );
-    p->addr_clear = (void *)( map_base + ( GPIO_BASE & MAP_MASK ) + CLEAR_OFFSET );
+    _p->addr_level = (void*)( _map_base + ( GPIO_BASE & MAP_MASK ) + LEVEL_OFFSET );
+    _p->addr_set = (void*)( _map_base + ( GPIO_BASE & MAP_MASK ) + SET_OFFSET );
+    _p->addr_clear = (void*)( _map_base + ( GPIO_BASE & MAP_MASK ) + CLEAR_OFFSET );
 
-    if( p
-      && h
-      && b
-      && t
-      && m )
+    if( _p
+      && _h
+      && _b
+      && _t
+      && _m )
       {
       _wand_hw_init();
 
@@ -514,37 +520,37 @@ uchar WandHwOpen( void )
 
 void WandHwClose( void )
 {
-    c_imu_delete( m );
-    c_timer_delete( t );
-    c_button_delete( b );
-    _c_haptic_delete( h );
-    _c_hw_delete( p );
+    _c_imu_delete( _m );
+    _c_timer_delete( _t );
+    _c_button_delete( _b );
+    _c_haptic_delete( _h );
+    _c_hw_delete( _p );
 
-    close( fd );
+    close( _fd );
 
-    if( munmap( map_base, MAP_SIZE ) == -1 )
+    if( munmap( _map_base, MAP_SIZE ) == -1 )
       {
       fprintf( stderr, "Cannot close Memory Map");
       exit( 1 );
       }
     
-    close( mem );
+    close( _mem );
 }
 
 uchar GetGPIO( uchar gpio )
 {
-    return *((volatile ulong*)p->addr_level ) >> gpio & 1;
+    return *((volatile ulong*)_p->addr_level ) >> gpio & 1;
 }
 
 void SetGPIO( uchar gpio, uchar value )
 {
-    if (value)
+    if( value )
       {
-      *((ulong*)p->addr_set ) = 1 << gpio;
+      *((ulong*)_p->addr_set ) = 1 << gpio;
       }
     else
       {
-      *((ulong*)p->addr_clear ) = 1 << gpio;
+      *((ulong*)_p->addr_clear ) = 1 << gpio;
       }
 }
 
@@ -581,99 +587,99 @@ uchar TimersExpired( void )
 
     _clock_now_get( &_now );
 
-    h->input = 0;
+    _h->input = 0;
     result = 0;
 
     if( initializing )
       {
-      t->sampling_sec = _now_sec;
-      t->sampling_nsec = _now_nsec;
+      _t->sampling_sec = _now_sec;
+      _t->sampling_nsec = _now_nsec;
       initializing = 0;
       }
     
     Button();
 
-    if( !b->timer_expired
-      && !b->pressed
-      && !b->led )
+    if( !_b->timer_expired
+      && !_b->pressed
+      && !_b->led )
       {
-      b->engaged = 0; 
+      _b->engaged = 0; 
       }
     
     if( poll( &mypoll, 1, 0 ))
       {    // User input buffer is not empty
-      scanf( "%c", &( h->input ));
+      scanf( "%c", &( _h->input ));
 
-      if( h->input == BUTTON_TRIGGER )
+      if( _h->input == BUTTON_TRIGGER )
         {    // Pressed Enter
-        t->haptic_sec = _now_sec;
-        t->haptic_nsec = _now_nsec;
-        h->engaged = 1;        // Haptic motor is in state of toggling periodically 
-        h->count = 0;
-        h->on = 0;
-        *((ulong*)p->addr_set ) = 1 << GPIO_HAPTIC;
+        _t->haptic_sec = _now_sec;
+        _t->haptic_nsec = _now_nsec;
+        _h->engaged = 1;        // Haptic motor is in state of toggling periodically 
+        _h->count = 0;
+        _h->on = 0;
+        *((ulong*)_p->addr_set ) = 1 << GPIO_HAPTIC;
         }
     }
     
-    sampling_timer_expired = ( _now_sec == t->sampling_sec
-                             ? _now_nsec >= t->sampling_nsec
-                             : _now_sec > t->sampling_sec );
+    sampling_timer_expired = ( _now_sec == _t->sampling_sec
+                             ? _now_nsec >= _t->sampling_nsec
+                             : _now_sec > _t->sampling_sec );
 
     if( sampling_timer_expired )
       {
-      AddTime( &( t->sampling_sec ), &( t->sampling_nsec ), SENSOR_PERIOD );
+      AddTime( &( _t->sampling_sec ), &( _t->sampling_nsec ), SENSOR_PERIOD );
       result += 1;
       }
     
-    b->timer_expired = b->engaged
-                       && ( _now_sec == t->button_nsec 
-                          ? _now_nsec >= t->button_nsec
-                          : _now_sec > t->button_sec );
+    _b->timer_expired = _b->engaged
+                       && ( _now_sec == _t->button_nsec 
+                          ? _now_nsec >= _t->button_nsec
+                          : _now_sec > _t->button_sec );
 
-    if( b->timer_expired )
+    if( _b->timer_expired )
       {
-      if( b->led )
+      if( _b->led )
         {
-        b->led = 0;
-        *((ulong*)p->addr_clear ) = 1 << GPIO_BUTTONLED;
-        b->engaged = 0;
+        _b->led = 0;
+        *((ulong*)_p->addr_clear ) = 1 << GPIO_BUTTONLED;
+        _b->engaged = 0;
         }
       else
         {
-        b->led = 1;
-        *((ulong*)p->addr_set ) = 1 << GPIO_BUTTONLED;
-        AddTime( &( t->button_sec ), &( t->button_nsec ), BUTTONLED_PERIOD_MS );
+        _b->led = 1;
+        *((ulong*)_p->addr_set ) = 1 << GPIO_BUTTONLED;
+        AddTime( &( _t->button_sec ), &( _t->button_nsec ), BUTTONLED_PERIOD_MS );
         }
       }
     
-    if( b->engaged )
+    if( _b->engaged )
       {
       result += 4;
       }
     
-    h->timer_expired = h->engaged
-                       && ( _now_sec == t->haptic_sec
-                          ? _now_nsec >= t->haptic_nsec
-                          : _now_sec > t->haptic_sec );
+    _h->timer_expired = _h->engaged
+                       && ( _now_sec == _t->haptic_sec
+                          ? _now_nsec >= _t->haptic_nsec
+                          : _now_sec > _t->haptic_sec );
 
-    if( h->timer_expired )
+    if( _h->timer_expired )
       {
-      AddTime( &( t->haptic_sec ), &( t->haptic_nsec ), HAPTIC_PERIOD_MS);
+      AddTime( &( _t->haptic_sec ), &( _t->haptic_nsec ), HAPTIC_PERIOD_MS);
 
-      h->on = !h->on;
+      _h->on = !_h->on;
 
-      if( h->on)
+      if( _h->on)
         {
-        *((ulong*)p->addr_set ) = 1 << GPIO_HAPTIC;
-        ++h->count;
+        *((ulong*)_p->addr_set ) = 1 << GPIO_HAPTIC;
+        ++_h->count;
         }
       else
         {
-        *((ulong*)p->addr_clear ) = 1 << GPIO_HAPTIC;
+        *((ulong*)_p->addr_clear ) = 1 << GPIO_HAPTIC;
 
-        if( h->count >= HAPTIC_TIMES )
+        if( _h->count >= HAPTIC_TIMES )
           {
-          h->engaged = 0;
+          _h->engaged = 0;
           }
         }
 
@@ -683,19 +689,19 @@ uchar TimersExpired( void )
     return result;
 }
 
-static void _pwm_init( int fd, int address )
+static void _pwm_init( int file, int address )
 {
-    change_addr_to( address );
-    i2c_smbus_write_byte_data( fd, LED_MODE1_REG, LED_NORMAL );
+    _change_addr_to( address );
+    i2c_smbus_write_byte_data( file, LED_MODE1_REG, LED_NORMAL );
 
     for ( int i = LEDOUT_START_REG; i < LEDOUT_END_REG; i++ )
       {
-      i2c_smbus_write_byte_data( fd, i, INDIV_CTRL );
+      i2c_smbus_write_byte_data( file, i, INDIV_CTRL );
       }
 
     for( int i = PWM_END_REG - 1; i >= PWM_START_REG; i-- )
       {
-      i2c_smbus_write_byte_data( fd, i, 0 );
+      i2c_smbus_write_byte_data( file, i, 0 );
       }
 }
     
@@ -716,9 +722,9 @@ static void _wand_hw_init( void )
     setlocale( LC_CTYPE, "" );   // For printing Unicode characters
     
     // Setting default parameters for ADC
-    i2c_smbus_write_byte_data( fd, ADC_CONFIG_REG, ADC_CONFIG_NORMAL );
-    i2c_smbus_write_byte_data( fd, ADC_ADVANCED_REG, ADC_ADVANCED_NORMAL );
-    i2c_smbus_write_byte_data( fd, ADC_DISABLE_CHANNELS_REG, 0 ); // Reset disabling channels, if any
+    i2c_smbus_write_byte_data( _fd, ADC_CONFIG_REG, ADC_CONFIG_NORMAL );
+    i2c_smbus_write_byte_data( _fd, ADC_ADVANCED_REG, ADC_ADVANCED_NORMAL );
+    i2c_smbus_write_byte_data( _fd, ADC_DISABLE_CHANNELS_REG, 0 ); // Reset disabling channels, if any
     
     // Setting limits for ADC readings (exceeding these limits causes an interrupt)
 
@@ -728,53 +734,53 @@ static void _wand_hw_init( void )
 
       scratch = ADC_VOLTAGE * ( ADC_CHANNELS - i ) / ADC_CHANNELS / 16;
       scratch += ADC_TOLERANCE;
-      i2c_smbus_write_byte_data( fd, FIRST_ADC_LIMIT_REG + 2 * i, scratch );
+      i2c_smbus_write_byte_data( _fd, FIRST_ADC_LIMIT_REG + 2 * i, scratch );
       scratch -= 2 * ADC_TOLERANCE;
-      i2c_smbus_write_byte_data( fd, FIRST_ADC_LIMIT_REG + 1 + 2 * i, scratch );
+      i2c_smbus_write_byte_data( _fd, FIRST_ADC_LIMIT_REG + 1 + 2 * i, scratch );
       }
     
     // Setting default parameters for accelerometer/gyroscope
-    change_addr_to( SENSOR_ADDRESS );
-    i2c_smbus_write_byte_data( fd, CMD, ACC_TO_NORM );
+    _change_addr_to( SENSOR_ADDRESS );
+    i2c_smbus_write_byte_data( _fd, CMD, ACC_TO_NORM );
     nanosleep( &_wake_acc, NULL );
-    i2c_smbus_write_byte_data( fd, CMD, GYR_TO_NORM );
+    i2c_smbus_write_byte_data( _fd, CMD, GYR_TO_NORM );
     nanosleep( &_wake_gyr, NULL );
-    i2c_smbus_write_byte_data( fd, INT_EN, ANYMOT_SINTAP_EN );
-    i2c_smbus_write_byte_data( fd, INT_OUT_CTRL, CONF_PINS );
-    i2c_smbus_write_byte_data( fd, INT_LATCH, LATCH );
-    i2c_smbus_write_byte_data( fd, INT_MAP1, ANYMOT_MAP );
-    i2c_smbus_write_byte_data( fd, INT_MAP2, SINTAP_MAP );
+    i2c_smbus_write_byte_data( _fd, INT_EN, ANYMOT_SINTAP_EN );
+    i2c_smbus_write_byte_data( _fd, INT_OUT_CTRL, CONF_PINS );
+    i2c_smbus_write_byte_data( _fd, INT_LATCH, LATCH );
+    i2c_smbus_write_byte_data( _fd, INT_MAP1, ANYMOT_MAP );
+    i2c_smbus_write_byte_data( _fd, INT_MAP2, SINTAP_MAP );
     
     // Setting default/initial parameters for LED drivers
-    _pwm_init( fd, LED_DRIVER1_ADDRESS );
-    _pwm_init( fd, LED_DRIVER2_ADDRESS );
+    _pwm_init( _fd, LED_DRIVER1_ADDRESS );
+    _pwm_init( _fd, LED_DRIVER2_ADDRESS );
 }
 
     // is Button depressed passed debounce
 uchar Button( void )
 {
-    b->pressed = !GetGPIO( GPIO_BUTTON );
+    _b->pressed = !GetGPIO( GPIO_BUTTON );
 
     _clock_now_get( &_now );
 
-    if( !b->pressed_was
-      && b->pressed )
+    if( !_b->pressed_was
+      && _b->pressed )
       {
-      t->button_sec = _now_sec;
-      t->button_nsec = _now_nsec;
-      b->engaged = 1;
+      _t->button_sec = _now_sec;
+      _t->button_nsec = _now_nsec;
+      _b->engaged = 1;
 
-      AddTime( &( t->button_sec ), &( t->button_nsec ), BUTTON_DOWNTIME_MS );
+      AddTime( &( _t->button_sec ), &( _t->button_nsec ), BUTTON_DOWNTIME_MS );
       }
 
-    b->pressed_was = b->pressed;
+    _b->pressed_was = _b->pressed;
 
-    b->timer_expired = ( b->engaged
-                       && ( _now_sec == t->button_sec 
-                        ? _now_nsec >= t->button_nsec
-                        : _now_sec > t->button_sec )); // debounce timer expired
+    _b->timer_expired = ( _b->engaged
+                       && ( _now_sec == _t->button_sec 
+                        ? _now_nsec >= _t->button_nsec
+                        : _now_sec > _t->button_sec )); // debounce timer expired
 
-    return b->timer_expired;
+    return _b->timer_expired;
 }
 
 uchar ButtonLEDSet( uchar on )
@@ -870,10 +876,10 @@ int CradleInBackwards( void )
         {
         _clock_now_get( &_now );
 
-        n.sec = _now_sec;
-        n.nsec = _now_nsec;
+        _n.sec = _now_sec;
+        _n.nsec = _now_nsec;
 
-        AddTime( &n.sec, &n.nsec, NOTIFICATION_DELAY_MS );
+        AddTime( &_n.sec, &_n.nsec, NOTIFICATION_DELAY_MS );
         _notification_pending = 1;
         }
 
@@ -914,52 +920,51 @@ void Haptic( uchar type )
 }
 
 #ifdef __DEMO__
-void __carousel_led_set( int fd, int cursor, int state )
+static void __carousel_led_set( int file, int cursor, int state )
 {
     if( PWM_START_REG + cursor < PWM_END_REG )
       {
-      change_addr_to( LED_DRIVER1_ADDRESS );
-      i2c_smbus_write_byte_data( fd, cursor, state ? BRIGHTNESS
-                                                   : 0 );
+      _change_addr_to( LED_DRIVER1_ADDRESS );
+      i2c_smbus_write_byte_data( file, cursor, state ? BRIGHTNESS
+                                                     : 0 );
 
-      change_addr_to( LED_DRIVER2_ADDRESS );
-      i2c_smbus_write_byte_data( fd, cursor, state ? BRIGHTNESS
-                                                   : 0 );
+      _change_addr_to( LED_DRIVER2_ADDRESS );
+      i2c_smbus_write_byte_data( file, cursor, state ? BRIGHTNESS
+                                                     : 0 );
       }
 }
 
-void _carousel_led_on( int fd, int cursor )
+static void _carousel_led_on( int file, int cursor )
 {
-    __carousel_led_set( fd, cursor, 1 );
+    __carousel_led_set( file, cursor, 1 );
 }
 
-void _carousel_led_off( int fd, int cursor )
+static void _carousel_led_off( int file, int cursor )
 {
-    __carousel_led_set( fd, cursor, 0 );
+    __carousel_led_set( file, cursor, 0 );
 }
 
-void _haptics_off( void )
+static void _haptics_off( void )
 {
-    *((ulong*)p->addr_clear ) = 1 << GPIO_HAPTIC;
+    *((ulong*)_p->addr_clear ) = 1 << GPIO_HAPTIC;
 }
 
-void _haptics_on( void )
+static void _haptics_on( void )
 {
-    *((ulong*)p->addr_set ) = 1 << GPIO_HAPTIC;
+    *((ulong*)_p->addr_set ) = 1 << GPIO_HAPTIC;
 }
 
-void _button_led_off( void )
+static void _button_led_off( void )
 {
-    *((ulong*)p->addr_set ) = 1 << GPIO_BUTTONLED;
+    *((ulong*)_p->addr_set ) = 1 << GPIO_BUTTONLED;
 }
 
-void _button_led_on( void )
+static void _button_led_on( void )
 {
-    *((ulong*)p->addr_clear ) = 1 << GPIO_BUTTONLED;
+    *((ulong*)_p->addr_clear ) = 1 << GPIO_BUTTONLED;
 }
 
-static uchar _carousel_cursor = 0;
-void _carousel_reset( void )
+static void _carousel_reset( void )
 {
     _carousel_cursor = 0;
 }
@@ -986,12 +991,12 @@ static void _preview_done( void )
 
 static void _preview_off( void )
 {
-    _carousel_led_off( fd, PREVIEW_CAROUSEL_CURSOR );
+    _carousel_led_off( _fd, PREVIEW_CAROUSEL_CURSOR );
 }
 
 static void _preview_on( void )
 {
-    _carousel_led_on( fd, PREVIEW_CAROUSEL_CURSOR );
+    _carousel_led_on( _fd, PREVIEW_CAROUSEL_CURSOR );
 }
 
 static void _capture( void )
@@ -1000,13 +1005,13 @@ static void _capture( void )
 
     do
       {
-      _carousel_led_on( fd, _carousel_cursor );
+      _carousel_led_on( _fd, _carousel_cursor );
       nanosleep( &_carousel_frame, NULL );
-      _carousel_led_off( fd, _carousel_cursor );
+      _carousel_led_off( _fd, _carousel_cursor );
       }
     while( _carousel_next() );
 
-    _carousel_led_off( fd, _carousel_cursor );
+    _carousel_led_off( _fd, _carousel_cursor );
 }
 
 int main( int argc, char** argv )
@@ -1026,8 +1031,8 @@ int main( int argc, char** argv )
             {
             Button();
 
-            if( b->timer_expired
-              && b->pressed )
+            if( _b->timer_expired
+              && _b->pressed )
               {
               if( just )
                 {
@@ -1065,8 +1070,8 @@ int main( int argc, char** argv )
 
           while( Button() )
             {
-            if( b->timer_expired
-              && b->pressed )
+            if( _b->timer_expired
+              && _b->pressed )
               {
               _cradle_in_flag = 0;
               }
@@ -1088,7 +1093,7 @@ int main( int argc, char** argv )
 
 #ifdef __TEST__
 // Output readings during a period between changes of LED brightness 
-void test_read_data( ulong duration_ns, char current_led_address )
+static void _test_read_data( ulong duration_ns, char current_led_address )
 {
     static struct timespec led_time;
 
@@ -1122,7 +1127,7 @@ void test_read_data( ulong duration_ns, char current_led_address )
 
     while( elapsed_ns < duration_ns )
       {
-      change_addr_to( current_led_address );
+      _change_addr_to( current_led_address );
 
       clock_gettime( CLOCK_REALTIME, &led_time );
 
@@ -1171,7 +1176,7 @@ void test_read_data( ulong duration_ns, char current_led_address )
         {      // Sampling timer expired
         ++sampling_count;
         sampling_count %= FREQ;  // Number of sampling within the current second
-        c_imu_read( m );
+        _c_imu_read( m );
 
         if( !sampling_count )
           {    // After one second passed
@@ -1182,26 +1187,26 @@ void test_read_data( ulong duration_ns, char current_led_address )
                     printf("------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
             }
 
-          c_imu_average( m );
+          _c_imu_average( m );
 
-          change_addr_to(ADC_ADDRESS);
+          _change_addr_to(ADC_ADDRESS);
           for( int i = 0; i < ADC_CHANNELS; i++ )
             {
-            in[i] = i2c_smbus_read_word_data( fd, 32 + i );
+            in[i] = i2c_smbus_read_word_data( _fd, 32 + i );
             printf( "%6d", test_swap_bytes( in[i] ));
             }
 
           if( int4 )
             {
-            i2c_smbus_read_word_data( fd, ADC_INTERRUPT_REG ); // Clear interrupt register
+            i2c_smbus_read_word_data( _fd, ADC_INTERRUPT_REG ); // Clear interrupt register
             }
 
-          change_addr_to( FUELGAUGE_ADDRESS );
+          _change_addr_to( FUELGAUGE_ADDRESS );
 
 //        if( int3 )
             {
-            pwr_lsbyte = i2c_smbus_read_byte_data( fd, FG_PWR_LSBYTE_REG );
-            pwr_msbyte = i2c_smbus_read_byte_data( fd, FG_PWR_MSBYTE_REG );
+            pwr_lsbyte = i2c_smbus_read_byte_data( _fd, FG_PWR_LSBYTE_REG );
+            pwr_msbyte = i2c_smbus_read_byte_data( _fd, FG_PWR_MSBYTE_REG );
 
             if( pwr_msbyte >> 7 )
               {
@@ -1218,22 +1223,22 @@ void test_read_data( ulong duration_ns, char current_led_address )
             }
           Button();
 
-          printf( "%9.1f", m->gyr_x * GYR_RESOLUTION );
+          printf( "%9.1f", _m->gyr_x * GYR_RESOLUTION );
           test_print_unicode( DEGREE_SYMBOL );
-          printf( "/s%7.1f", m->gyr_y * GYR_RESOLUTION );
+          printf( "/s%7.1f", _m->gyr_y * GYR_RESOLUTION );
           test_print_unicode( DEGREE_SYMBOL );
-          printf( "/s%7.1f", m->gyr_z * GYR_RESOLUTION );
+          printf( "/s%7.1f", _m->gyr_z * GYR_RESOLUTION );
           test_print_unicode( DEGREE_SYMBOL );
-          printf( "/s%7.2fg", m->acc_x * ACC_RESOLUTION );
-          printf( "%7.2fg", m->acc_y * ACC_RESOLUTION );
-          printf( "%7.2fg", m->acc_z * ACC_RESOLUTION );
+          printf( "/s%7.2fg", _m->acc_x * ACC_RESOLUTION );
+          printf( "%7.2fg", _m->acc_y * ACC_RESOLUTION );
+          printf( "%7.2fg", _m->acc_z * ACC_RESOLUTION );
           printf( "%s", int1 ? "      1 " : "      0 " );
           printf( "%s", int2 ? "    1 " : "    0 " );
           printf( "%s", int3 ? "    1 " : "    0 " );
           printf( "%s", int4 ? "    1 " : "    0 " );
           printf( "%s", haptic_state ? "    1 " : "    0 " );
           printf( "%s", hall_state ? "    1 " : "    0 " );
-          printf( "%s", b->pressed ? "    1 " : "    0 " );
+          printf( "%s", _b->pressed ? "    1 " : "    0 " );
           printf( "%s", charging_state );
           printf( "\n" );
           fflush( stdout );
@@ -1241,7 +1246,7 @@ void test_read_data( ulong duration_ns, char current_led_address )
           ++line_count;
           line_count %= LINES_BETWEEN_HEADINGS;
 
-          c_imu_clear( m );
+          _c_imu_clear( _m );
 
           int1 = 0;
           int2 = 0;
@@ -1261,21 +1266,21 @@ void test_read_data( ulong duration_ns, char current_led_address )
       }
 }                                           
 
-void test_pwm_read( int fd, int address )
+static void _test_pwm_read( int file, int address )
 {
-    change_addr_to( address );
+    _change_addr_to( address );
 
     for( int i = PWM_START_REG; i < PWM_END_REG; i++ )
       {
-      i2c_smbus_write_byte_data( fd, i, BRIGHTNESS );
+      i2c_smbus_write_byte_data( file, i, BRIGHTNESS );
       test_read_data( LED_ON_MSEC * MILLION, address );
-      i2c_smbus_write_byte_data( fd, i, 0 );
+      i2c_smbus_write_byte_data( file, i, 0 );
       test_read_data( LED_OFF_MSEC * MILLION, address );
       }
 }
 
 // For printing the degree symbol
-void test_print_unicode( ushort code )
+static void _test_print_unicode( ushort code )
 {
     fclose( stdout );
     freopen( "/dev/tty", "a", stdout );
@@ -1285,7 +1290,7 @@ void test_print_unicode( ushort code )
 }
 
 // Swap bytes in a two-byte number n
-int test_swap_bytes( ushort n )
+static int _test_swap_bytes( ushort n )
 {
     ushort a = n >> 8;
     ushort b = n << 8;
@@ -1306,8 +1311,8 @@ int main( int argc, char** argv )
     while( 1 )
       {
       printf( "Counter %d\n", c++ );
-      test_pwm_read( fd, LED_DRIVER1_ADDRESS );
-      test_pwm_read( fd, LED_DRIVER2_ADDRESS );
+      _test_pwm_read( _fd, LED_DRIVER1_ADDRESS );
+      _test_pwm_read( _fd, LED_DRIVER2_ADDRESS );
       }
 
 
