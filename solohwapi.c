@@ -40,9 +40,9 @@
 #define LED_DRIVER1_ADDRESS         0x60
 #define LED_DRIVER2_ADDRESS         0x61
 #define SENSOR_ADDRESS              0x69
-#define BRIGHTNESS                    10   
+#define BRIGHTNESS                    99   
 #define LED_ON_MSEC                  500        // Duration of period when a LED is on
-#define LED_OFF_MSEC                 500        // Duration of period when all LEDs are off
+#define LED_OFF_MSEC                   5	// Duration of period when all LEDs are off
 #define LED_MODE1_REG                  0        // Mode register 1 for LED driver
 #define LED_NORMAL                     0        // Normal value for mode register 1
 #define NUMBER_OF_LEDS                12

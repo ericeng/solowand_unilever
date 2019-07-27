@@ -1,3 +1,14 @@
+//
+// fuel.c
+// 
+// desc: exercise the battery management including charging through the solowand daughter board
+//
+// Written by: Alexei
+// Adapted by: G. Eric Engstrom
+//
+// (C) Copyright 2019, Solomomo LCC, All Rights Reserved
+//
+
 
 #include "e_ventures.h"
 #include <stdio.h>
