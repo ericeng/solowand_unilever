@@ -26,20 +26,20 @@ static void _current_time( void )
 static void _add_time( unsigned long *t_sec, unsigned long *t_nsec, int to_add_msec, int units )
 {
     if( units ) // milliseconds
-    {
-        *t_sec += to_add_msec / THOUSAND;
-        *t_nsec += to_add_msec % THOUSAND * MILLION;
-    }
+      {
+      *t_sec += to_add_msec / THOUSAND;
+      *t_nsec += to_add_msec % THOUSAND * MILLION;
+      }
     else
-    {
-    	*t_nsec += to_add_msec;
-    }
+      {
+      *t_nsec += to_add_msec;
+      }
 
     if (*t_nsec > BILLION)
-    {
-        *t_nsec -= BILLION;
-        ++*t_sec;
-    }
+      {
+      *t_nsec -= BILLION;
+      ++*t_sec;
+      }
 }
 
 int main( int argc, char** argv )
@@ -53,15 +53,15 @@ int main( int argc, char** argv )
     _add_time( &boot_delay_sec, &boot_delay_nsec, 9000, 1 );
 
     while( 1 )
-    {
-        _current_time();
+      {
+      _current_time();
 
-	if( now_sec > boot_delay_sec )
+      if( now_sec > boot_delay_sec )
 	{
-	    printf( "now %ld boot %ld\n", now_sec, boot_delay_sec );
-	    break;
+	printf( "now %ld boot %ld\n", now_sec, boot_delay_sec );
+	break;
 	}
-    }
+      }
 
     system( "/usr/bin/sudo /usr/bin/python /home/pi/streameye/extras/raspimjpeg.py -h 480 -w 640 -r 15 | /usr/bin/sudo /usr/local/bin/streameye" );
 

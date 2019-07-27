@@ -14,6 +14,7 @@
  * - Hall sensor 
  */
 
+#include "e_ventures.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -29,6 +30,7 @@
 #include <locale.h>
 #include <poll.h>
 #include <linux/types.h>
+#include "e_ventures_specific.h"
 
 #define BUTTON_TRIGGER 10
 #define PREVIEW_CAROUSEL_CURSOR 2
@@ -120,11 +122,6 @@
 
 #define SENSOR_PERIOD ( THOUSAND / FREQ )
 #define PWM_END_REG PWM_START_REG + NUMBER_OF_LEDS
-
-typedef unsigned long ulong;
-typedef unsigned int uint;
-typedef unsigned short ushort;
-typedef unsigned char uchar;
 
 // { CHEAT
 static uint _cradle_in_flag = 1;
@@ -258,10 +255,10 @@ int main( int argc, char** argv );
 
 #ifdef __TEST__
 int main( int argc, char** argv );
-static int test_swap_bytes( ushort n );
-static void test_print_unicode( ushort code );
-static void test_pwm_read( int fd, int address );
-static void test_read_data( ulong duration_ns, char current_led_address );
+static int _test_swap_bytes( ushort n );
+static void _test_print_unicode( ushort code );
+static void _test_pwm_read( int fd, int address );
+static void _test_read_data( ulong duration_ns, char current_led_address );
 #endif
 
 static c_haptic* _h = NULL;
@@ -309,68 +306,6 @@ void _change_addr_to( uchar new_addr )
       ioctl( _fd, I2C_SLAVE, new_addr );
       current_addr = new_addr;
       }
-}
-
-/*
-The following four function declarations are included because they are missing
-from standard library header file i2c-dev.h
-*/
-static inline __s32 i2c_smbus_access( int file, char read_write, __u8 command, int size, union i2c_smbus_data *data )
-{
-    struct i2c_smbus_ioctl_data args;
-
-    args.read_write = read_write;
-    args.command = command;
-    args.size = size;
-    args.data = data;
-
-    return ioctl( file, I2C_SMBUS, &args );
-}
-
-static inline __s32 i2c_smbus_read_byte_data( int file, __u8 command )
-{
-    union i2c_smbus_data data;
-
-    if ( i2c_smbus_access( file, I2C_SMBUS_READ, command, I2C_SMBUS_BYTE_DATA, &data ))
-      {
-      return -1;
-      }
-    else
-      {
-      return ( 0xFF & data.byte );
-      }
-}
-
-static inline __s32 i2c_smbus_write_byte_data( int file, __u8 command, 
-                                           __u8 value )
-{
-    union i2c_smbus_data data;
-
-    data.byte = value;
-
-    return i2c_smbus_access( file, I2C_SMBUS_WRITE, command, I2C_SMBUS_BYTE_DATA, &data );
-}
-
-static inline __s32 i2c_smbus_read_word_data(int file, __u8 command)
-{
-    union i2c_smbus_data data;
-
-    if( i2c_smbus_access( file, I2C_SMBUS_READ, command, I2C_SMBUS_WORD_DATA, &data ))
-      {
-      return -1;
-      }
-    else
-      {
-      return 0xFFFF & data.word;
-      }
-}
-
-static inline __s32 i2c_smbus_write_word_data( int file, __u8 command, __u16 value )
-{
-    union i2c_smbus_data data;
-
-    data.word = value;
-    return i2c_smbus_access( file, I2C_SMBUS_WRITE, command, I2C_SMBUS_WORD_DATA, &data );
 }
 
 static c_haptic* _c_haptic_new( void )

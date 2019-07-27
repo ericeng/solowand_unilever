@@ -1,11 +1,16 @@
+
+#include "e_ventures.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <linux/i2c-dev.h>
+#include <linux/i2c.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <linux/types.h>
+#include "e_ventures_specific.h"
 
 #define I2C_ADDRESS                 0x55
 #define BUS                  "/dev/i2c-1"
@@ -22,60 +27,18 @@
 #define I2C_SMBUS_WRITE	               0
 #define I2C_SMBUS_BYTE_DATA	           2 
 
-char yesno[4];
-char bin_str[9];
-unsigned char reg[REGS];
+uchar yesno[4];
+uchar bin_str[9];
+uchar reg[REGS];
 int fd;
 
 void print_state();
-int signed_int (unsigned int i);
-void is_one (unsigned char val, char bit);
-void to_bin(unsigned char x);
+int signed_int( uint i );
+void is_one( uchar val, uchar bit );
+void to_bin( uchar x );
 
-union i2c_smbus_data {
-	__u8 byte;
-	__u16 word;
-	__u8 block[I2C_SMBUS_BLOCK_MAX + 2];
-};
-struct i2c_smbus_ioctl_data {
-	char read_write;
-	__u8 command;
-	int size;
-	union i2c_smbus_data *data;
-};
-
-static inline __s32 i2c_smbus_access(int file, char read_write, __u8 command, 
-                                  int size, union i2c_smbus_data *data)
+int main()
 {
-	struct i2c_smbus_ioctl_data args;
-
-	args.read_write = read_write;
-	args.command = command;
-	args.size = size;
-	args.data = data;
-	return ioctl(file,I2C_SMBUS,&args);
-}
-
-static inline __s32 i2c_smbus_read_byte_data(int file, __u8 command)
-{
-	union i2c_smbus_data data;
-	if (i2c_smbus_access(file,I2C_SMBUS_READ,command,
-	                     I2C_SMBUS_BYTE_DATA,&data))
-		return -1;
-	else
-		return 0x0FF & data.byte;
-}
-
-static inline __s32 i2c_smbus_write_byte_data(int file, __u8 command, 
-                                           __u8 value)
-{
-	union i2c_smbus_data data;
-	data.byte = value;
-	return i2c_smbus_access(file,I2C_SMBUS_WRITE,command,
-	                        I2C_SMBUS_BYTE_DATA, &data);
-}
-
-int main() {
     void *map_base, *level_addr;
     unsigned long value;
     int mem;
@@ -209,18 +172,25 @@ void print_state() {
     printf ("__________________________________________________\n");
 }
 
-void to_bin(unsigned char x) {
-    int i;
-    for (i = 0; i < 8; i++) {
-        bin_str[i] = (x >> (7 - i) & 1) ? 49 : 48; // ASCII code: 48 for '0', '49 for '1'
+void to_bin(unsigned char x)
+{
+    for( int i = 0; i < 8; i++)
+    {
+        bin_str[i] = ( x >> ( 7 - i ) & 1 ) ? 49
+                                            : 48; // ASCII code: 48 for '0', '49 for '1'
     }
+
     bin_str[8] = 0;
 }
 
-int signed_int (unsigned int i) {
-  return (i >> 15 ? i - 65536 : i);
+int signed_int( uint i )
+{
+    return( i >> 15 ? i - 65536
+                    : i );
 }
 
-void is_one (unsigned char val, char bit) {
-  strcpy(yesno, (val >> bit & 1 ? "yes" : "no"));
+void is_one( uchar val, uchar bit )
+{
+    strcpy( yesno, ( val >> bit & 1 ? "yes"
+                                    : "no" ));
 }
