@@ -1,7 +1,16 @@
-/*
-Test code and example code for haptic and hall sub system.
-*/
+//
+// haptic.c
+// 
+// desc: test and example code for haptic sub system 
+//
+// Written by: Alexei
+// Adapted by: G. Eric Engstrom
+//
+// (C) Copyright 2019, Solomomo LCC, All Rights Reserved
+//
 
+
+#include "e_ventures.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
@@ -10,6 +19,7 @@ Test code and example code for haptic and hall sub system.
 #include <time.h>
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
+#include "e_ventures_specific.h"
 
 #define LEVEL_OFFSET                0x34
 #define SET_OFFSET                  0x1C
@@ -59,218 +69,177 @@ int fd;
 
 struct timespec now;
 
-unsigned long now_sec;
-unsigned long now_nsec;  
+ulong now_sec;
+ulong now_nsec;  
 
-unsigned long timer_ring_sec;
-unsigned long timer_ring_nsec;  
+ulong timer_ring_sec;
+ulong timer_ring_nsec;  
 
 const long clock_period = BILLION / CLK_FREQ;
-const long number_of_clock_pulses = DRIVER_CAP * ((LEDS - 1) / DRIVER_CAP + 1) * 1;
-long clock_pulse;
-long between_clock_pulses;
+const long number_of_clock_pulses = DRIVER_CAP * (( LEDS - 1 ) / DRIVER_CAP + 1 ) * 1;
+ulong clock_pulse;
+ulong between_clock_pulses;
 
 static int _button( void );
-static int _ring_capture( void );
 static int _wand_in_cradle( void );
 
-/*
-The following four function declarations are included because they are missing
-from standard library header file i2c-dev.h
-*/
-static inline __s32 _i2c_smbus_access( int file, char read_write, __u8 command, int size, union i2c_smbus_data *data )
-{
-	struct i2c_smbus_ioctl_data args;
-
-	args.read_write = read_write;
-	args.command = command;
-	args.size = size;
-	args.data = data;
-
-	return ioctl( file, I2C_SMBUS, &args );
-}
-
-static inline __s32 _i2c_smbus_read_byte_data( int file, __u8 command )
-{
-	union i2c_smbus_data data;
-
-	if( _i2c_smbus_access( file, I2C_SMBUS_READ, command, I2C_SMBUS_BYTE_DATA, &data ))
-        {
-	    return -1;
-        }
-	else
-	{
-   	    return 0x0FF & data.byte;
-	}
-}
-
-static inline __s32 _i2c_smbus_write_byte_data( int file, __u8 command, __u8 value )
-{
-	union i2c_smbus_data data;
-
-	data.byte = value;
-	return _i2c_smbus_access( file, I2C_SMBUS_WRITE, command, I2C_SMBUS_BYTE_DATA, &data );
-}
-
-static inline __s32 _i2c_smbus_read_word_data( int file, __u8 command )
-{
-	union i2c_smbus_data data;
-
-	if( _i2c_smbus_access( file, I2C_SMBUS_READ, command, I2C_SMBUS_WORD_DATA, &data ))
-        {
-	    return -1;
-        }
-	else
-	{
-	    return 0x0FFFF & data.word;
-	}
-}
+static void _current_time( void );
+static void _add_time( ulong *t_sec, ulong *t_nsec, uint to_add_msec, uint units );
+static void _change_addr_to( uchar new_addr );
+static void _set_level( uchar gpio, uchar value );
+void _change_level( uchar gpio, uchar level, ulong ns_to_add );
+static int _ring_led( uchar led_number, ulong oe_pulse, uint scan );
+static void _ring_reset( void );
+static void _ring_beg( void );
+static void _preview( void );
+static int _ring_capture( void );
+static inline char _get_level( char gpio );
+static int _notification( int start );
 
 static void _current_time( void )
 {
-    clock_gettime(CLOCK_REALTIME, &now);
-    now_sec = (unsigned long)now.tv_sec;
+    clock_gettime( CLOCK_REALTIME, &now );
+
+    now_sec = (ulong)now.tv_sec;
     now_nsec = now.tv_nsec;
 }
 
-static void _button_led( int status )
+static void _button_led( uint status )
 {
     if( status )
-    {
-        *((unsigned long *)set_addr) = 1 << GPIO_BUTTONLED;
-    }
+      {
+      *((ulong*)set_addr) = 1 << GPIO_BUTTONLED;
+      }
     else
-    {
-        *((unsigned long *)clear_addr) = 1 << GPIO_BUTTONLED;
-    }
+      {
+      *((ulong*)clear_addr) = 1 << GPIO_BUTTONLED;
+      }
 }
 
 // Add to_add nanoseconds to the timer defined by t_sec/t_nsec
-static void _add_time( unsigned long *t_sec, unsigned long *t_nsec, int to_add_msec, int units )
+static void _add_time( ulong *t_sec, ulong *t_nsec, uint to_add_msec, uint units )
 {
     if( units ) // milliseconds
-    {
-        *t_sec += to_add_msec / THOUSAND;
-        *t_nsec += to_add_msec % THOUSAND * MILLION;
-    }
+      {
+      *t_sec += to_add_msec / THOUSAND;
+      *t_nsec += to_add_msec % THOUSAND * MILLION;
+      }
     else
-    {
-    	*t_nsec += to_add_msec;
-    }
+      {
+      *t_nsec += to_add_msec;
+      }
 
-    if (*t_nsec > BILLION)
-    {
-        *t_nsec -= BILLION;
-        ++*t_sec;
-    }
+    if( *t_nsec > BILLION )
+      {
+      *t_nsec -= BILLION;
+      ++*t_sec;
+      }
 }
 
 // Connect to I2C address new_addr
-static void _change_addr_to( char new_addr )
+static void _change_addr_to( uchar new_addr )
 {
     static char current_addr = 0;
 
-    if (current_addr != new_addr)
-    {
-        ioctl( fd, I2C_SLAVE, new_addr );
-        current_addr = new_addr;
-    }
+    if( current_addr != new_addr )
+      {
+      ioctl( fd, I2C_SLAVE, new_addr );
+      current_addr = new_addr;
+      }
 }
 
 // Set gpio level to value (1 or 0)
-static void _set_level (char gpio, char value)
+static void _set_level( uchar gpio, uchar value )
 {
-    if (value)
-    {
-        *((unsigned long *)set_addr) = 1 << gpio;
-    }
+    if( value )
+      {
+      *((ulong*)set_addr) = 1 << gpio;
+      }
     else
-    {
-        *((unsigned long *)clear_addr) = 1 << gpio;
-    }
+      {
+      *((ulong*)clear_addr) = 1 << gpio;
+      }
 }
 
-void _change_level( char gpio, char level, long ns_to_add )
+void _change_level( uchar gpio, uchar level, ulong ns_to_add )
 {
     while( 1 )
-    {
-	_current_time();
+      {
+      _current_time();
 
-        if(( now_sec == timer_ring_sec )
-         ?( now_nsec >= timer_ring_nsec )
-         :( now_sec > timer_ring_sec ))
+      if(( now_sec == timer_ring_sec ) ? ( now_nsec >= timer_ring_nsec )
+                                       : ( now_sec > timer_ring_sec ))
         {
-            break;
+        break;
         }
-    }
+      }
 
     if( gpio == GPIO_SDI )
-    {
-        _set_level( GPIO_CLK, 0 );
-    }
+      {
+      _set_level( GPIO_CLK, 0 );
+      }
 
     _set_level( gpio, level );
     _add_time( &timer_ring_sec, &timer_ring_nsec, ns_to_add, 0 );
 }
 
-static int _ring_led( char led_number, long oe_pulse, int scan )
+static int _ring_led( uchar led_number, ulong oe_pulse, uint scan )
 {
     int i;
-    int j;
 
     _current_time();
 
     timer_ring_sec = now_sec;
     timer_ring_nsec = now_nsec;
 
-    for( j = 0;  j < 10 ; j++ )
-    {
-        if( _wand_in_cradle() )
+    for( int j = 0;  j < 10 ; j++ )
+      {
+      if( _wand_in_cradle() )
         {
-	    return 0;
+        return 0;
         }
 
-        for( i = 0; i < number_of_clock_pulses; ++i )
+      for( int i = 0; i < number_of_clock_pulses; ++i )
         {
-            if( i == ( 31 - led_number ))
-            {
-                _change_level( GPIO_SDI, 1, between_clock_pulses );
-	    }
-            else if( i == ( 31 - ( led_number + 10 )))
-            {
-                _change_level( GPIO_SDI, 1, between_clock_pulses );
-	    }
-            else if( i == ( 31 - led_number + 1 ))
-            {
-                _change_level( GPIO_SDI, 0, between_clock_pulses );
-            }
-            else if( i == ( 31 - ( led_number + 10 ) + 1 ))
-            {
-                _change_level( GPIO_SDI, 0, between_clock_pulses );
-            }
-            else
-            {
-                _change_level( GPIO_CLK, 0, between_clock_pulses );
-            }
+        if( i == ( 31 - led_number ))
+          {
+          _change_level( GPIO_SDI, 1, between_clock_pulses );
+	  }
+        else if( i == ( 31 - ( led_number + 10 )))
+          {
+          _change_level( GPIO_SDI, 1, between_clock_pulses );
+	  }
+        else if( i == ( 31 - led_number + 1 ))
+          {
+          _change_level( GPIO_SDI, 0, between_clock_pulses );
+          }
+        else if( i == ( 31 - ( led_number + 10 ) + 1 ))
+          {
+          _change_level( GPIO_SDI, 0, between_clock_pulses );
+          }
+        else
+          {
+          _change_level( GPIO_CLK, 0, between_clock_pulses );
+          }
 
-            _change_level( GPIO_CLK, 1, clock_pulse );
+        _change_level( GPIO_CLK, 1, clock_pulse );
         }
 
-        _change_level( GPIO_CLK, 0, between_clock_pulses );
-        _change_level( GPIO_LE, 1, clock_pulse );
-        _change_level( GPIO_LE, 0, LE_TO_OE );
-        _change_level( GPIO_OE, 0, oe_pulse );
+      _change_level( GPIO_CLK, 0, between_clock_pulses );
+      _change_level( GPIO_LE, 1, clock_pulse );
+      _change_level( GPIO_LE, 0, LE_TO_OE );
+      _change_level( GPIO_OE, 0, oe_pulse );
 
-        if( !scan )
+      if( !scan )
         {
-	    break;
+	break;
         }
-    }
+      }
 
     if( scan )
-    {
-        _change_level( GPIO_OE, 1, BETWEEN_CYCLES );
-    }
+      {
+      _change_level( GPIO_OE, 1, BETWEEN_CYCLES );
+      }
 
     return 1;
 }

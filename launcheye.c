@@ -1,7 +1,16 @@
-/*
-    Launches raspijmpeg | streameye after sufficient boot time has passed
-*/
+//
+// launcheye.c
+// 
+// desc: launches raspijmpeg | streameye
+//       after waiting for boot to complete, supports relaunching if the service dies 
+//
+// Written by: G. Eric Engstrom
+//
+// (C) Copyright 2019, Solomomo LCC, All Rights Reserved
+//
 
+
+#include "e_ventures.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -12,18 +21,19 @@
 
 struct timespec now;
 
-unsigned long now_sec;
-unsigned long now_nsec;  
+ulong now_sec;
+ulong now_nsec;  
 
 static void _current_time( void )
 {
-    clock_gettime(CLOCK_REALTIME, &now);
-    now_sec = (unsigned long)now.tv_sec;
+    clock_gettime( CLOCK_REALTIME, &now );
+
+    now_sec = (ulong)now.tv_sec;
     now_nsec = now.tv_nsec;
 }
 
 // Add to_add nanoseconds to the timer defined by t_sec/t_nsec
-static void _add_time( unsigned long *t_sec, unsigned long *t_nsec, int to_add_msec, int units )
+static void _add_time( ulong *t_sec, ulong *t_nsec, int to_add_msec, int units )
 {
     if( units ) // milliseconds
       {
@@ -44,12 +54,14 @@ static void _add_time( unsigned long *t_sec, unsigned long *t_nsec, int to_add_m
 
 int main( int argc, char** argv )
 {
-    unsigned long boot_delay_sec = 0;
-    unsigned long boot_delay_nsec = 0;
+    ulong boot_delay_sec = 0;
+    ulong boot_delay_nsec = 0;
 
     _current_time();
+
     boot_delay_sec = now_sec;
     boot_delay_nsec = now_nsec;
+
     _add_time( &boot_delay_sec, &boot_delay_nsec, 9000, 1 );
 
     while( 1 )

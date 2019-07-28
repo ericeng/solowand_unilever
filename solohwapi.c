@@ -1,18 +1,19 @@
-/*
- * SoloHwApi.c
- *
- * Copyright Solomomo LLC 2018, 2019
- * Written by: Alexei for test purposes
- * Adapted by: G. Eric Engstrom for beta deploymnet
- *
- * API provides access to:
- * - two LED drivers TLC59116
- * - accelerometer/gyroscope BMI160 
- * - analog-to-digital converter ADC128D818
- * - battery fuel gauge bq27421-G1 
- * - haptic motor 
- * - Hall sensor 
- */
+//
+// SoloHwApi.c
+//
+// Written by: Alexei for test purposes
+// Adapted by: G. Eric Engstrom for beta deploymnent
+//
+// Copyright Solomomo LLC 2018, 2019 All Rights Reserved
+//
+// API provides access to:
+// - two LED drivers TLC59116
+// - accelerometer/gyroscope BMI160 
+// - analog-to-digital converter ADC128D818
+// - battery fuel gauge bq27421-G1 
+// - haptic motor 
+// - Hall sensor 
+//
 
 #include "e_ventures.h"
 #include <stdio.h>
@@ -203,14 +204,7 @@ static ulong _now_sec;
 static ulong _now_nsec;
 static uchar _carousel_cursor = 0;
 
-static void _clock_now_get( struct timespec *_scratch )
-{
-    clock_gettime( CLOCK_REALTIME, _scratch );
-
-    _now_sec = (ulong)_scratch->tv_sec;
-    _now_nsec = _scratch->tv_nsec;
-}
-    
+static void _clock_now_get( struct timespec* _scratch );
 static void _change_addr_to( uchar new_addr );
 static c_haptic* _c_haptic_new( void );
 static void _c_haptic_delete( c_haptic* d );
@@ -296,8 +290,16 @@ static struct timespec _carousel_frame;
 
 #define LEDOUT_END_REG LEDOUT_START_REG + (NUMBER_OF_LEDS - 1) / 4 + 1
 
+static void _clock_now_get( struct timespec* _scratch )
+{
+    clock_gettime( CLOCK_REALTIME, _scratch );
+
+    _now_sec = (ulong)_scratch->tv_sec;
+    _now_nsec = _scratch->tv_nsec;
+}
+    
 // Connect to I2C address new_addr
-void _change_addr_to( uchar new_addr )
+static void _change_addr_to( uchar new_addr )
 {
     static uchar current_addr = 0;
 
@@ -353,19 +355,19 @@ static void _c_imu_read( c_imu* _this )
 {
     _change_addr_to( SENSOR_ADDRESS );
 
-    _this->gyr_x_lsb = i2c_smbus_read_byte_data( _fd, GYR_X_LSB_REG );
-    _this->gyr_x_msb = i2c_smbus_read_byte_data( _fd, GYR_X_MSB_REG );
-    _this->gyr_y_lsb = i2c_smbus_read_byte_data( _fd, GYR_Y_LSB_REG );
-    _this->gyr_y_msb = i2c_smbus_read_byte_data( _fd, GYR_Y_MSB_REG );
-    _this->gyr_z_lsb = i2c_smbus_read_byte_data( _fd, GYR_Z_LSB_REG );
-    _this->gyr_z_msb = i2c_smbus_read_byte_data( _fd, GYR_Z_MSB_REG );
+    _this->gyr_x_lsb = _i2c_smbus_read_byte_data( _fd, GYR_X_LSB_REG );
+    _this->gyr_x_msb = _i2c_smbus_read_byte_data( _fd, GYR_X_MSB_REG );
+    _this->gyr_y_lsb = _i2c_smbus_read_byte_data( _fd, GYR_Y_LSB_REG );
+    _this->gyr_y_msb = _i2c_smbus_read_byte_data( _fd, GYR_Y_MSB_REG );
+    _this->gyr_z_lsb = _i2c_smbus_read_byte_data( _fd, GYR_Z_LSB_REG );
+    _this->gyr_z_msb = _i2c_smbus_read_byte_data( _fd, GYR_Z_MSB_REG );
 
-    _this->acc_x_lsb = i2c_smbus_read_byte_data( _fd, ACC_X_LSB_REG );
-    _this->acc_x_msb = i2c_smbus_read_byte_data( _fd, ACC_X_MSB_REG );
-    _this->acc_y_lsb = i2c_smbus_read_byte_data( _fd, ACC_Y_LSB_REG );
-    _this->acc_y_msb = i2c_smbus_read_byte_data( _fd, ACC_Y_MSB_REG );
-    _this->acc_z_lsb = i2c_smbus_read_byte_data( _fd, ACC_Z_LSB_REG );
-    _this->acc_z_msb = i2c_smbus_read_byte_data( _fd, ACC_Z_MSB_REG );
+    _this->acc_x_lsb = _i2c_smbus_read_byte_data( _fd, ACC_X_LSB_REG );
+    _this->acc_x_msb = _i2c_smbus_read_byte_data( _fd, ACC_X_MSB_REG );
+    _this->acc_y_lsb = _i2c_smbus_read_byte_data( _fd, ACC_Y_LSB_REG );
+    _this->acc_y_msb = _i2c_smbus_read_byte_data( _fd, ACC_Y_MSB_REG );
+    _this->acc_z_lsb = _i2c_smbus_read_byte_data( _fd, ACC_Z_LSB_REG );
+    _this->acc_z_msb = _i2c_smbus_read_byte_data( _fd, ACC_Z_MSB_REG );
 
     _this->gyr_x += (short)(( _this->gyr_x_msb << 8 ) | _this->gyr_x_lsb );
     _this->gyr_y += (short)(( _this->gyr_y_msb << 8 ) | _this->gyr_y_lsb );
@@ -627,16 +629,16 @@ uchar TimersExpired( void )
 static void _pwm_init( int file, int address )
 {
     _change_addr_to( address );
-    i2c_smbus_write_byte_data( file, LED_MODE1_REG, LED_NORMAL );
+    _i2c_smbus_write_byte_data( file, LED_MODE1_REG, LED_NORMAL );
 
     for ( int i = LEDOUT_START_REG; i < LEDOUT_END_REG; i++ )
       {
-      i2c_smbus_write_byte_data( file, i, INDIV_CTRL );
+      _i2c_smbus_write_byte_data( file, i, INDIV_CTRL );
       }
 
     for( int i = PWM_END_REG - 1; i >= PWM_START_REG; i-- )
       {
-      i2c_smbus_write_byte_data( file, i, 0 );
+      _i2c_smbus_write_byte_data( file, i, 0 );
       }
 }
     
@@ -657,9 +659,9 @@ static void _wand_hw_init( void )
     setlocale( LC_CTYPE, "" );   // For printing Unicode characters
     
     // Setting default parameters for ADC
-    i2c_smbus_write_byte_data( _fd, ADC_CONFIG_REG, ADC_CONFIG_NORMAL );
-    i2c_smbus_write_byte_data( _fd, ADC_ADVANCED_REG, ADC_ADVANCED_NORMAL );
-    i2c_smbus_write_byte_data( _fd, ADC_DISABLE_CHANNELS_REG, 0 ); // Reset disabling channels, if any
+    _i2c_smbus_write_byte_data( _fd, ADC_CONFIG_REG, ADC_CONFIG_NORMAL );
+    _i2c_smbus_write_byte_data( _fd, ADC_ADVANCED_REG, ADC_ADVANCED_NORMAL );
+    _i2c_smbus_write_byte_data( _fd, ADC_DISABLE_CHANNELS_REG, 0 ); // Reset disabling channels, if any
     
     // Setting limits for ADC readings (exceeding these limits causes an interrupt)
 
@@ -669,22 +671,25 @@ static void _wand_hw_init( void )
 
       scratch = ADC_VOLTAGE * ( ADC_CHANNELS - i ) / ADC_CHANNELS / 16;
       scratch += ADC_TOLERANCE;
-      i2c_smbus_write_byte_data( _fd, FIRST_ADC_LIMIT_REG + 2 * i, scratch );
+
+      _i2c_smbus_write_byte_data( _fd, FIRST_ADC_LIMIT_REG + 2 * i, scratch );
+
       scratch -= 2 * ADC_TOLERANCE;
-      i2c_smbus_write_byte_data( _fd, FIRST_ADC_LIMIT_REG + 1 + 2 * i, scratch );
+
+      _i2c_smbus_write_byte_data( _fd, FIRST_ADC_LIMIT_REG + 1 + 2 * i, scratch );
       }
     
     // Setting default parameters for accelerometer/gyroscope
     _change_addr_to( SENSOR_ADDRESS );
-    i2c_smbus_write_byte_data( _fd, CMD, ACC_TO_NORM );
+    _i2c_smbus_write_byte_data( _fd, CMD, ACC_TO_NORM );
     nanosleep( &_wake_acc, NULL );
-    i2c_smbus_write_byte_data( _fd, CMD, GYR_TO_NORM );
+    _i2c_smbus_write_byte_data( _fd, CMD, GYR_TO_NORM );
     nanosleep( &_wake_gyr, NULL );
-    i2c_smbus_write_byte_data( _fd, INT_EN, ANYMOT_SINTAP_EN );
-    i2c_smbus_write_byte_data( _fd, INT_OUT_CTRL, CONF_PINS );
-    i2c_smbus_write_byte_data( _fd, INT_LATCH, LATCH );
-    i2c_smbus_write_byte_data( _fd, INT_MAP1, ANYMOT_MAP );
-    i2c_smbus_write_byte_data( _fd, INT_MAP2, SINTAP_MAP );
+    _i2c_smbus_write_byte_data( _fd, INT_EN, ANYMOT_SINTAP_EN );
+    _i2c_smbus_write_byte_data( _fd, INT_OUT_CTRL, CONF_PINS );
+    _i2c_smbus_write_byte_data( _fd, INT_LATCH, LATCH );
+    _i2c_smbus_write_byte_data( _fd, INT_MAP1, ANYMOT_MAP );
+    _i2c_smbus_write_byte_data( _fd, INT_MAP2, SINTAP_MAP );
     
     // Setting default/initial parameters for LED drivers
     _pwm_init( _fd, LED_DRIVER1_ADDRESS );
@@ -854,18 +859,28 @@ void Haptic( uchar type )
  */
 }
 
+static void _haptics_off( void )
+{
+    *((ulong*)_p->addr_clear ) = 1 << GPIO_HAPTIC;
+}
+
+static void _haptics_on( void )
+{
+    *((ulong*)_p->addr_set ) = 1 << GPIO_HAPTIC;
+}
+
 #ifdef __DEMO__
 static void __carousel_led_set( int file, int cursor, int state )
 {
     if( PWM_START_REG + cursor < PWM_END_REG )
       {
       _change_addr_to( LED_DRIVER1_ADDRESS );
-      i2c_smbus_write_byte_data( file, cursor, state ? BRIGHTNESS
-                                                     : 0 );
+      _i2c_smbus_write_byte_data( file, cursor, state ? BRIGHTNESS
+                                                      : 0 );
 
       _change_addr_to( LED_DRIVER2_ADDRESS );
-      i2c_smbus_write_byte_data( file, cursor, state ? BRIGHTNESS
-                                                     : 0 );
+      _i2c_smbus_write_byte_data( file, cursor, state ? BRIGHTNESS
+                                                      : 0 );
       }
 }
 
@@ -877,16 +892,6 @@ static void _carousel_led_on( int file, int cursor )
 static void _carousel_led_off( int file, int cursor )
 {
     __carousel_led_set( file, cursor, 0 );
-}
-
-static void _haptics_off( void )
-{
-    *((ulong*)_p->addr_clear ) = 1 << GPIO_HAPTIC;
-}
-
-static void _haptics_on( void )
-{
-    *((ulong*)_p->addr_set ) = 1 << GPIO_HAPTIC;
 }
 
 static void _button_led_off( void )
@@ -1111,7 +1116,8 @@ static void _test_read_data( ulong duration_ns, char current_led_address )
         {      // Sampling timer expired
         ++sampling_count;
         sampling_count %= FREQ;  // Number of sampling within the current second
-        _c_imu_read( m );
+
+        _c_imu_read( _m );
 
         if( !sampling_count )
           {    // After one second passed
@@ -1122,26 +1128,26 @@ static void _test_read_data( ulong duration_ns, char current_led_address )
                     printf("------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
             }
 
-          _c_imu_average( m );
+          _c_imu_average( _m );
 
           _change_addr_to(ADC_ADDRESS);
           for( int i = 0; i < ADC_CHANNELS; i++ )
             {
-            in[i] = i2c_smbus_read_word_data( _fd, 32 + i );
-            printf( "%6d", test_swap_bytes( in[i] ));
+            in[i] = _i2c_smbus_read_word_data( _fd, 32 + i );
+            printf( "%6d", _test_swap_bytes( in[i] ));
             }
 
           if( int4 )
             {
-            i2c_smbus_read_word_data( _fd, ADC_INTERRUPT_REG ); // Clear interrupt register
+            _i2c_smbus_read_word_data( _fd, ADC_INTERRUPT_REG ); // Clear interrupt register
             }
 
           _change_addr_to( FUELGAUGE_ADDRESS );
 
 //        if( int3 )
             {
-            pwr_lsbyte = i2c_smbus_read_byte_data( _fd, FG_PWR_LSBYTE_REG );
-            pwr_msbyte = i2c_smbus_read_byte_data( _fd, FG_PWR_MSBYTE_REG );
+            pwr_lsbyte = _i2c_smbus_read_byte_data( _fd, FG_PWR_LSBYTE_REG );
+            pwr_msbyte = _i2c_smbus_read_byte_data( _fd, FG_PWR_MSBYTE_REG );
 
             if( pwr_msbyte >> 7 )
               {
@@ -1159,11 +1165,11 @@ static void _test_read_data( ulong duration_ns, char current_led_address )
           Button();
 
           printf( "%9.1f", _m->gyr_x * GYR_RESOLUTION );
-          test_print_unicode( DEGREE_SYMBOL );
+          _test_print_unicode( DEGREE_SYMBOL );
           printf( "/s%7.1f", _m->gyr_y * GYR_RESOLUTION );
-          test_print_unicode( DEGREE_SYMBOL );
+          _test_print_unicode( DEGREE_SYMBOL );
           printf( "/s%7.1f", _m->gyr_z * GYR_RESOLUTION );
-          test_print_unicode( DEGREE_SYMBOL );
+          _test_print_unicode( DEGREE_SYMBOL );
           printf( "/s%7.2fg", _m->acc_x * ACC_RESOLUTION );
           printf( "%7.2fg", _m->acc_y * ACC_RESOLUTION );
           printf( "%7.2fg", _m->acc_z * ACC_RESOLUTION );
@@ -1207,10 +1213,10 @@ static void _test_pwm_read( int file, int address )
 
     for( int i = PWM_START_REG; i < PWM_END_REG; i++ )
       {
-      i2c_smbus_write_byte_data( file, i, BRIGHTNESS );
-      test_read_data( LED_ON_MSEC * MILLION, address );
-      i2c_smbus_write_byte_data( file, i, 0 );
-      test_read_data( LED_OFF_MSEC * MILLION, address );
+      _i2c_smbus_write_byte_data( file, i, BRIGHTNESS );
+      _test_read_data( LED_ON_MSEC * MILLION, address );
+      _i2c_smbus_write_byte_data( file, i, 0 );
+      _test_read_data( LED_OFF_MSEC * MILLION, address );
       }
 }
 
@@ -1241,7 +1247,7 @@ int main( int argc, char** argv )
 
     /* 
     LEDs switch on/off or change brightness in a certain (cyclic) pattern;
-    between these changes, the control is passed to the test_read_data() function
+    between these changes, the control is passed to the _test_read_data() function
     */
     while( 1 )
       {

@@ -86,7 +86,7 @@ void print_state() {
     float t;
     
     for (i = 0; i < REGS; i++) {
-      reg[i] = i2c_smbus_read_byte_data(fd, i);
+      reg[i] = _i2c_smbus_read_byte_data(fd, i);
     }
     
     is_one(reg[1], 7);
