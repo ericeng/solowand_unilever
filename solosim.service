@@ -1,0 +1,13 @@
+
+[Unit]
+Description=Solomomo Wand Simulator Service
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/sudo /home/pi/solowand_unilever/wand_sim
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
