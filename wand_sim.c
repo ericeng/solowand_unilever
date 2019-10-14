@@ -5,8 +5,8 @@
 #include <wiringPi.h>
 #include <signal.h>
 
-#define POWER_BLINK_DELAY_ON	20
-#define POWER_BLINK_DELAY_OFF	20
+#define POWER_BLINK_DELAY_ON	10
+#define POWER_BLINK_DELAY_OFF	10
 
 #define GPIO_LED        21
 #define GPIO_BUTTON_0   26
@@ -94,13 +94,13 @@ int main( int argc, char** argv )
     if( on )
       {
       digitalWrite( GPIO_GREEN, 1 );
-      delay( 50 );
+      delay( 25 );
       on--;
       }
     else if( off )
       {
       digitalWrite( GPIO_GREEN, 0 );
-      delay( 50 );
+      delay( 25 );
       off--;
       }
     else
