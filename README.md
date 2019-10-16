@@ -1,13 +1,11 @@
-# solowand_unilever
-
-you must install streameye
+# solowand_unilever must have been installed in the home directory
 
 ########
 
 cd ~
-sudo git clone https://github.com/ccrisan/streameye
+git clone https://github.com/ccrisan/streameye
 cd ~/streameye
-sudo make
+make
 sudo make install
 cd ~
 

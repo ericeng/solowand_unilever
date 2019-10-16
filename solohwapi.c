@@ -78,7 +78,7 @@
 #define GYR_TO_NORM                 0x15        // Change gyroscope power mode to normal
 #define ACC_TIME_TO_NORM_NS      3800000        // Max time for changing accelerometer power mode to normal
 #define GYR_TIME_TO_NORM_NS     80000000        // Max time for changing gyroscope power mode to normal
-#define PREVIEW_DONE_NS         90000000        // Time for physical signal at the end of capture. 
+#define CAPTURE_END_NS          90000000        // Time for physical signal at the end of capture. 
 #define CAROUSEL_FRAME_NS      140000000	// Time to capture each image from the camera, 6.5 fps
 #define BUS                  "/dev/i2c-1"
 #define LEVEL_OFFSET                0x34
@@ -124,10 +124,8 @@
 #define SENSOR_PERIOD ( THOUSAND / FREQ )
 #define PWM_END_REG PWM_START_REG + NUMBER_OF_LEDS
 
-// { CHEAT
 static uint _cradle_in_flag = 1;
 static uint _notification_pending = 0;
-// } CHEAT
 
 typedef struct C_NOTIFICATION
 {
@@ -214,20 +212,19 @@ static c_timer* _c_timer_new( void );
 static void _c_timer_delete( c_timer* d );
 static c_imu* _c_imu_new( void );
 static void _c_imu_delete( c_imu* d );
-#ifdef __TEST__
-static void _c_imu_read( c_imu* _this );
-static void _c_imu_clear( c_imu* _this );
-static void _c_imu_average( c_imu* _this );
-#endif
-static void _preview_done( void );
-static void _preview_on( void );
-static void _preview_off( void );
 static c_hw* _c_hw_new( void );
 static void _c_hw_delete( c_hw* _this );
+static void _capture_beg( void );
+static void _capture_end( void );
+static void _preview_on( void );
+static void _preview_off( void );
 static void _wand_hw_init( void );
 static void _pwm_init( int fd, int address );
-static void _haptics_off( void );
 static void _haptics_on( void );
+static void _haptics_off( void );
+static void _button_led_on( void );
+static void _button_led_off( void );
+static void __carousel_led_set( int file, int cursor, int state );
 
 uchar WandHwOpen( void );
 void WandHwClose( void );
@@ -243,18 +240,6 @@ int CradleIn( void );
 int CradleInBackwards( void );
 void Notification( void );
 
-#ifdef __DEMO__
-int main( int argc, char** argv );
-#endif
-
-#ifdef __TEST__
-int main( int argc, char** argv );
-static int _test_swap_bytes( ushort n );
-static void _test_print_unicode( ushort code );
-static void _test_pwm_read( int fd, int address );
-static void _test_read_data( ulong duration_ns, char current_led_address );
-#endif
-
 static c_haptic* _h = NULL;
 static c_button* _b = NULL;
 static c_timer* _t = NULL;
@@ -266,7 +251,7 @@ static int _mem;
 static int _fd;
 static struct timespec _wake_acc;
 static struct timespec _wake_gyr;
-static struct timespec _preview_done_haptic;
+static struct timespec _capture_end_haptic;
 static struct timespec _carousel_frame;
 
 /*
@@ -350,56 +335,6 @@ static void _c_imu_delete( c_imu* d )
     free( d );
 }
 
-#ifdef __TEST__
-static void _c_imu_read( c_imu* _this )
-{
-    _change_addr_to( SENSOR_ADDRESS );
-
-    _this->gyr_x_lsb = _i2c_smbus_read_byte_data( _fd, GYR_X_LSB_REG );
-    _this->gyr_x_msb = _i2c_smbus_read_byte_data( _fd, GYR_X_MSB_REG );
-    _this->gyr_y_lsb = _i2c_smbus_read_byte_data( _fd, GYR_Y_LSB_REG );
-    _this->gyr_y_msb = _i2c_smbus_read_byte_data( _fd, GYR_Y_MSB_REG );
-    _this->gyr_z_lsb = _i2c_smbus_read_byte_data( _fd, GYR_Z_LSB_REG );
-    _this->gyr_z_msb = _i2c_smbus_read_byte_data( _fd, GYR_Z_MSB_REG );
-
-    _this->acc_x_lsb = _i2c_smbus_read_byte_data( _fd, ACC_X_LSB_REG );
-    _this->acc_x_msb = _i2c_smbus_read_byte_data( _fd, ACC_X_MSB_REG );
-    _this->acc_y_lsb = _i2c_smbus_read_byte_data( _fd, ACC_Y_LSB_REG );
-    _this->acc_y_msb = _i2c_smbus_read_byte_data( _fd, ACC_Y_MSB_REG );
-    _this->acc_z_lsb = _i2c_smbus_read_byte_data( _fd, ACC_Z_LSB_REG );
-    _this->acc_z_msb = _i2c_smbus_read_byte_data( _fd, ACC_Z_MSB_REG );
-
-    _this->gyr_x += (short)(( _this->gyr_x_msb << 8 ) | _this->gyr_x_lsb );
-    _this->gyr_y += (short)(( _this->gyr_y_msb << 8 ) | _this->gyr_y_lsb );
-    _this->gyr_z += (short)(( _this->gyr_z_msb << 8 ) | _this->gyr_z_lsb );
-
-    _this->acc_x += (short)(( _this->acc_x_msb << 8 ) | _this->acc_x_lsb );
-    _this->acc_y += (short)(( _this->acc_y_msb << 8 ) | _this->acc_y_lsb );
-    _this->acc_z += (short)(( _this->acc_z_msb << 8 ) | _this->acc_z_lsb );
-}
-
-static void _c_imu_clear( c_imu* _this )
-{
-    _this->gyr_x = 0;
-    _this->gyr_y = 0;
-    _this->gyr_z = 0;
-
-    _this->acc_x = 0;
-    _this->acc_y = 0;
-    _this->acc_z = 0;
-}
-
-static void _c_imu_average( c_imu* _this )
-{
-    _this->gyr_x /= FREQ;  // Averaging
-    _this->gyr_y /= FREQ;
-    _this->gyr_z /= FREQ;
-
-    _this->acc_x /= FREQ;
-    _this->acc_y /= FREQ;
-    _this->acc_z /= FREQ;
-}
-#endif
 
 static c_hw* _c_hw_new( void )
 {
@@ -578,13 +513,15 @@ uchar TimersExpired( void )
       if( _b->led )
         {
         _b->led = 0;
-        *((ulong*)_p->addr_clear ) = 1 << GPIO_BUTTONLED;
+        _button_led_off();
+        // *((ulong*)_p->addr_clear ) = 1 << GPIO_BUTTONLED;
         _b->engaged = 0;
         }
       else
         {
         _b->led = 1;
-        *((ulong*)_p->addr_set ) = 1 << GPIO_BUTTONLED;
+        _button_led_on();
+        //*((ulong*)_p->addr_set ) = 1 << GPIO_BUTTONLED;
         AddTime( &( _t->button_sec ), &( _t->button_nsec ), BUTTONLED_PERIOD_MS );
         }
       }
@@ -650,8 +587,8 @@ static void _wand_hw_init( void )
     _wake_gyr.tv_sec = 0;
     _wake_gyr.tv_nsec = GYR_TIME_TO_NORM_NS;
 
-    _preview_done_haptic.tv_sec = 0;
-    _preview_done_haptic.tv_nsec = PREVIEW_DONE_NS;
+    _capture_end_haptic.tv_sec = 0;
+    _capture_end_haptic.tv_nsec = CAPTURE_END_NS;
 
     _carousel_frame.tv_sec = 0;
     _carousel_frame.tv_nsec = CAROUSEL_FRAME_NS;
@@ -859,17 +796,16 @@ void Haptic( uchar type )
  */
 }
 
-static void _haptics_off( void )
-{
-    *((ulong*)_p->addr_clear ) = 1 << GPIO_HAPTIC;
-}
-
 static void _haptics_on( void )
 {
     *((ulong*)_p->addr_set ) = 1 << GPIO_HAPTIC;
 }
 
-#ifdef __DEMO__
+static void _haptics_off( void )
+{
+    *((ulong*)_p->addr_clear ) = 1 << GPIO_HAPTIC;
+}
+
 static void __carousel_led_set( int file, int cursor, int state )
 {
     if( PWM_START_REG + cursor < PWM_END_REG )
@@ -894,22 +830,13 @@ static void _carousel_led_off( int file, int cursor )
     __carousel_led_set( file, cursor, 0 );
 }
 
-static void _button_led_off( void )
-{
-    *((ulong*)_p->addr_set ) = 1 << GPIO_BUTTONLED;
-}
-
-static void _button_led_on( void )
-{
-    *((ulong*)_p->addr_clear ) = 1 << GPIO_BUTTONLED;
-}
-
 static void _carousel_reset( void )
 {
     _carousel_cursor = 0;
+    __carousel_led_set( _fd, _carousel_cursor, 0 );
 }
 
-uchar _carousel_next( void )
+static uchar _carousel_next( void )
 {
     if( PWM_START_REG + _carousel_cursor + 1 < PWM_END_REG )
       {
@@ -922,16 +849,14 @@ uchar _carousel_next( void )
       }
 }
 
-static void _preview_done( void )
+static void _button_led_on( void )
 {
-    _haptics_on();
-    nanosleep( &_preview_done_haptic, NULL );
-    _haptics_off();
+    *((ulong*)_p->addr_clear ) = 1 << GPIO_BUTTONLED;
 }
 
-static void _preview_off( void )
+static void _button_led_off( void )
 {
-    _carousel_led_off( _fd, PREVIEW_CAROUSEL_CURSOR );
+    *((ulong*)_p->addr_set ) = 1 << GPIO_BUTTONLED;
 }
 
 static void _preview_on( void )
@@ -939,7 +864,12 @@ static void _preview_on( void )
     _carousel_led_on( _fd, PREVIEW_CAROUSEL_CURSOR );
 }
 
-static void _capture( void )
+static void _preview_off( void )
+{
+    _carousel_led_off( _fd, PREVIEW_CAROUSEL_CURSOR );
+}
+
+static void _capture_beg( void )
 {
     _carousel_reset();
 
@@ -952,12 +882,23 @@ static void _capture( void )
     while( _carousel_next() );
 
     _carousel_led_off( _fd, _carousel_cursor );
+    _capture_end();
 }
+
+static void _capture_end( void )
+{
+    _haptics_on();
+    nanosleep( &_capture_end_haptic, NULL );
+    _haptics_off();
+}
+
+#ifdef __DEMO__
+int main( int argc, char** argv );
 
 int main( int argc, char** argv )
 {
     WandHwOpen();
-    _wand_hw_init();
+
     for( ;; )
       {
       if( CradleInBackwards() == 0 )
@@ -966,6 +907,7 @@ int main( int argc, char** argv )
         if( CradleIn() == 0 )
           {
           int just = 1;
+
           _preview_on();
           for( ;; )
             {
@@ -977,7 +919,7 @@ int main( int argc, char** argv )
               if( just )
                 {
                 _preview_off();
-                _capture();
+                _capture_beg();
                 just = 0;
                 }
               }
@@ -985,7 +927,7 @@ int main( int argc, char** argv )
               {
               if( !just )
                 {
-                _preview_done();
+                _capture_end();
                 _preview_on();
                 just = 1;
                 }
@@ -995,7 +937,6 @@ int main( int argc, char** argv )
               || CradleInBackwards() )
               {
               _preview_off();
-              _carousel_reset();
               _button_led_off();
               break;
               }
@@ -1005,7 +946,6 @@ int main( int argc, char** argv )
           {
           _haptics_off();
           _preview_off();
-          _carousel_reset();
           _button_led_off();
 
           while( Button() )
@@ -1021,7 +961,6 @@ int main( int argc, char** argv )
       else
         {
         _preview_off();
-        _carousel_reset();
         _button_led_off();
         _cradle_in_flag = 1;
         }
@@ -1032,8 +971,18 @@ int main( int argc, char** argv )
 #endif
 
 #ifdef __TEST__
+
+int main( int argc, char** argv );
+static void _t_imu_read( c_imu* _this );
+static void _t_imu_clear( c_imu* _this );
+static void _t_imu_average( c_imu* _this );
+static int _t_swap_bytes( ushort n );
+static void _t_print_unicode( ushort code );
+static void _t_pwm_read( int fd, int address );
+static void _t_read_data( ulong duration_ns, char current_led_address );
+
 // Output readings during a period between changes of LED brightness 
-static void _test_read_data( ulong duration_ns, char current_led_address )
+static void _t_read_data( ulong duration_ns, char current_led_address )
 {
     static struct timespec led_time;
 
@@ -1117,7 +1066,7 @@ static void _test_read_data( ulong duration_ns, char current_led_address )
         ++sampling_count;
         sampling_count %= FREQ;  // Number of sampling within the current second
 
-        _c_imu_read( _m );
+        _t_imu_read( _m );
 
         if( !sampling_count )
           {    // After one second passed
@@ -1128,13 +1077,13 @@ static void _test_read_data( ulong duration_ns, char current_led_address )
                     printf("------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
             }
 
-          _c_imu_average( _m );
+          _t_imu_average( _m );
 
           _change_addr_to(ADC_ADDRESS);
           for( int i = 0; i < ADC_CHANNELS; i++ )
             {
             in[i] = _i2c_smbus_read_word_data( _fd, 32 + i );
-            printf( "%6d", _test_swap_bytes( in[i] ));
+            printf( "%6d", _t_swap_bytes( in[i] ));
             }
 
           if( int4 )
@@ -1165,11 +1114,11 @@ static void _test_read_data( ulong duration_ns, char current_led_address )
           Button();
 
           printf( "%9.1f", _m->gyr_x * GYR_RESOLUTION );
-          _test_print_unicode( DEGREE_SYMBOL );
+          _t_print_unicode( DEGREE_SYMBOL );
           printf( "/s%7.1f", _m->gyr_y * GYR_RESOLUTION );
-          _test_print_unicode( DEGREE_SYMBOL );
+          _t_print_unicode( DEGREE_SYMBOL );
           printf( "/s%7.1f", _m->gyr_z * GYR_RESOLUTION );
-          _test_print_unicode( DEGREE_SYMBOL );
+          _t_print_unicode( DEGREE_SYMBOL );
           printf( "/s%7.2fg", _m->acc_x * ACC_RESOLUTION );
           printf( "%7.2fg", _m->acc_y * ACC_RESOLUTION );
           printf( "%7.2fg", _m->acc_z * ACC_RESOLUTION );
@@ -1187,7 +1136,7 @@ static void _test_read_data( ulong duration_ns, char current_led_address )
           ++line_count;
           line_count %= LINES_BETWEEN_HEADINGS;
 
-          _c_imu_clear( _m );
+          _t_imu_clear( _m );
 
           int1 = 0;
           int2 = 0;
@@ -1207,21 +1156,21 @@ static void _test_read_data( ulong duration_ns, char current_led_address )
       }
 }                                           
 
-static void _test_pwm_read( int file, int address )
+static void _t_pwm_read( int file, int address )
 {
     _change_addr_to( address );
 
     for( int i = PWM_START_REG; i < PWM_END_REG; i++ )
       {
       _i2c_smbus_write_byte_data( file, i, BRIGHTNESS );
-      _test_read_data( LED_ON_MSEC * MILLION, address );
+      _t_read_data( LED_ON_MSEC * MILLION, address );
       _i2c_smbus_write_byte_data( file, i, 0 );
-      _test_read_data( LED_OFF_MSEC * MILLION, address );
+      _t_read_data( LED_OFF_MSEC * MILLION, address );
       }
 }
 
 // For printing the degree symbol
-static void _test_print_unicode( ushort code )
+static void _t_print_unicode( ushort code )
 {
     fclose( stdout );
     freopen( "/dev/tty", "a", stdout );
@@ -1231,12 +1180,61 @@ static void _test_print_unicode( ushort code )
 }
 
 // Swap bytes in a two-byte number n
-static int _test_swap_bytes( ushort n )
+static int _t_swap_bytes( ushort n )
 {
     ushort a = n >> 8;
     ushort b = n << 8;
 
     return (( a << 8 ) + ( b >> 8 )); 
+}
+
+static void _t_imu_read( c_imu* _this )
+{
+    _change_addr_to( SENSOR_ADDRESS );
+
+    _this->gyr_x_lsb = _i2c_smbus_read_byte_data( _fd, GYR_X_LSB_REG );
+    _this->gyr_x_msb = _i2c_smbus_read_byte_data( _fd, GYR_X_MSB_REG );
+    _this->gyr_y_lsb = _i2c_smbus_read_byte_data( _fd, GYR_Y_LSB_REG );
+    _this->gyr_y_msb = _i2c_smbus_read_byte_data( _fd, GYR_Y_MSB_REG );
+    _this->gyr_z_lsb = _i2c_smbus_read_byte_data( _fd, GYR_Z_LSB_REG );
+    _this->gyr_z_msb = _i2c_smbus_read_byte_data( _fd, GYR_Z_MSB_REG );
+
+    _this->acc_x_lsb = _i2c_smbus_read_byte_data( _fd, ACC_X_LSB_REG );
+    _this->acc_x_msb = _i2c_smbus_read_byte_data( _fd, ACC_X_MSB_REG );
+    _this->acc_y_lsb = _i2c_smbus_read_byte_data( _fd, ACC_Y_LSB_REG );
+    _this->acc_y_msb = _i2c_smbus_read_byte_data( _fd, ACC_Y_MSB_REG );
+    _this->acc_z_lsb = _i2c_smbus_read_byte_data( _fd, ACC_Z_LSB_REG );
+    _this->acc_z_msb = _i2c_smbus_read_byte_data( _fd, ACC_Z_MSB_REG );
+
+    _this->gyr_x += (short)(( _this->gyr_x_msb << 8 ) | _this->gyr_x_lsb );
+    _this->gyr_y += (short)(( _this->gyr_y_msb << 8 ) | _this->gyr_y_lsb );
+    _this->gyr_z += (short)(( _this->gyr_z_msb << 8 ) | _this->gyr_z_lsb );
+
+    _this->acc_x += (short)(( _this->acc_x_msb << 8 ) | _this->acc_x_lsb );
+    _this->acc_y += (short)(( _this->acc_y_msb << 8 ) | _this->acc_y_lsb );
+    _this->acc_z += (short)(( _this->acc_z_msb << 8 ) | _this->acc_z_lsb );
+}
+
+static void _t_imu_clear( c_imu* _this )
+{
+    _this->gyr_x = 0;
+    _this->gyr_y = 0;
+    _this->gyr_z = 0;
+
+    _this->acc_x = 0;
+    _this->acc_y = 0;
+    _this->acc_z = 0;
+}
+
+static void _t_imu_average( c_imu* _this )
+{
+    _this->gyr_x /= FREQ;  // Averaging
+    _this->gyr_y /= FREQ;
+    _this->gyr_z /= FREQ;
+
+    _this->acc_x /= FREQ;
+    _this->acc_y /= FREQ;
+    _this->acc_z /= FREQ;
 }
 
 int main( int argc, char** argv )

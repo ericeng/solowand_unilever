@@ -64,6 +64,7 @@ int main( int argc, char** argv )
 
   while( 1 )
     {
+    // wand in charger backwards
     while( !digitalRead( GPIO_BUTTON_1 ))
       {
       digitalWrite( GPIO_GREEN, 0 );
@@ -72,6 +73,7 @@ int main( int argc, char** argv )
       }
     digitalWrite( GPIO_LED, 0 );
 
+    // wand removed from cradle, preparing for capture
     while( digitalRead( GPIO_CRADLE_1 ))
       {
       digitalWrite( GPIO_GREEN, 0 );
@@ -81,6 +83,7 @@ int main( int argc, char** argv )
       delay( 50 );
       }
 
+    // wand charging
     while( digitalRead( GPIO_CHARGING_1 ))
       {
       digitalWrite( GPIO_GREEN, 0 );
@@ -90,6 +93,7 @@ int main( int argc, char** argv )
       delay( 50 );
       }
 
+    // wand standing by to capture
     sleep( 1 );
     if( on )
       {
