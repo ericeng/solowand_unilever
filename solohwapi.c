@@ -46,9 +46,9 @@
 #define LED_OFF_MSEC                   5	// Duration of period when all LEDs are off
 #define LED_MODE1_REG                  0        // Mode register 1 for LED driver
 #define LED_NORMAL                     0        // Normal value for mode register 1
-#define NUMBER_OF_LEDS                12
-#define PWM_START_REG                  2        // First brightness register for LED driver
-#define LEDOUT_START_REG              20        // First output state register for LED driver
+#define LED_COUNT                     12
+#define PWM_BEG_REG                    2        // First brightness register for LED driver
+#define LEDOUT_BEG_REG                20        // First output state register for LED driver
 #define INDIV_CTRL                   170        // Mode of individual brightness controlling
 #define FG_PWR_MSBYTE_REG             25
 #define FG_PWR_LSBYTE_REG             24
@@ -122,7 +122,7 @@
 #define HAPTIC_TIMES                   5       // Haptic motor goes on/off this number of times when pressing Enter
 
 #define SENSOR_PERIOD ( THOUSAND / FREQ )
-#define PWM_END_REG PWM_START_REG + NUMBER_OF_LEDS
+#define PWM_END_REG PWM_BEG_REG + LED_COUNT
 
 static uint _cradle_in_flag = 1;
 static uint _notification_pending = 0;
@@ -273,7 +273,7 @@ static struct timespec _carousel_frame;
  *
  */
 
-#define LEDOUT_END_REG LEDOUT_START_REG + (NUMBER_OF_LEDS - 1) / 4 + 1
+#define LEDOUT_END_REG LEDOUT_BEG_REG + (LED_COUNT - 1) / 4 + 1
 
 static void _clock_now_get( struct timespec* _scratch )
 {
@@ -568,12 +568,12 @@ static void _pwm_init( int file, int address )
     _change_addr_to( address );
     _i2c_smbus_write_byte_data( file, LED_MODE1_REG, LED_NORMAL );
 
-    for ( int i = LEDOUT_START_REG; i < LEDOUT_END_REG; i++ )
+    for ( int i = LEDOUT_BEG_REG; i < LEDOUT_END_REG; i++ )
       {
       _i2c_smbus_write_byte_data( file, i, INDIV_CTRL );
       }
 
-    for( int i = PWM_END_REG - 1; i >= PWM_START_REG; i-- )
+    for( int i = PWM_END_REG - 1; i >= PWM_BEG_REG; i-- )
       {
       _i2c_smbus_write_byte_data( file, i, 0 );
       }
@@ -808,7 +808,7 @@ static void _haptics_off( void )
 
 static void __carousel_led_set( int file, int cursor, int state )
 {
-    if( PWM_START_REG + cursor < PWM_END_REG )
+    if( PWM_BEG_REG + cursor < PWM_END_REG )
       {
       _change_addr_to( LED_DRIVER1_ADDRESS );
       _i2c_smbus_write_byte_data( file, cursor, state ? BRIGHTNESS
@@ -838,7 +838,7 @@ static void _carousel_reset( void )
 
 static uchar _carousel_next( void )
 {
-    if( PWM_START_REG + _carousel_cursor + 1 < PWM_END_REG )
+    if( PWM_BEG_REG + _carousel_cursor + 1 < PWM_END_REG )
       {
       ++_carousel_cursor;
       return 1;
@@ -1160,7 +1160,7 @@ static void _t_pwm_read( int file, int address )
 {
     _change_addr_to( address );
 
-    for( int i = PWM_START_REG; i < PWM_END_REG; i++ )
+    for( int i = PWM_BEG_REG; i < PWM_END_REG; i++ )
       {
       _i2c_smbus_write_byte_data( file, i, BRIGHTNESS );
       _t_read_data( LED_ON_MSEC * MILLION, address );
